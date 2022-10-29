@@ -1,0 +1,1 @@
+ffmpeg -y -f image2 -i ./合成\ 1_000%02d.jpg -profile:v main -pix_fmt yuv420p index.mp4
