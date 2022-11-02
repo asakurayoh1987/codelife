@@ -48,6 +48,13 @@ done
 git branch | grep feature_2021 | xargs -n1 -I{} git branch -d {}
 ```
 
+```bash
+# 根据用户ip查看用户所在地及运营商类型
+for ip in $(cat ip.txt); do
+  curl "http://whois.pconline.com.cn/ipJson.jsp?ip=$ip&json=true" >> r.txt
+done;
+```
+
 
 
 ## css

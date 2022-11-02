@@ -68,6 +68,8 @@ sar -P ALL 1 1
 
 ```bash
 ldd /bin/echo
+# 查看glibc版本
+ldd --version
 ```
 
 
@@ -89,12 +91,14 @@ nc localhot
 ```bash
 # 显示 Linux 系统架构
 uname -a
+uname -r
 # 查看操作系统是32位还是64位
 dpkg --print-architecture
 # 显示操作系统架构类型
 arch
 # 查看系统发行版本信息
 lsb_release -a
+cat /etc/redhat-release
 ```
 
 ## scp
@@ -246,6 +250,15 @@ ldd --version
 # 解决yum install时提示没有可用的包，比如默认安装autojump-zsh提示没有包，通过以下命令使用epel并更新repo后就可以安装了
 yum -y install epel-release
 yum repolist
+
+# 安装包
+yum -y install devtoolset-11-gcc-plugin-devel
+# 查看可用的包
+yum list available devtoolset-11-\*
+# 删除包
+yum remove devtoolset-8-\*
+# 查看可用的开发
+yum grouplist | grep development
 ```
 
 ## 时间及时区设置
@@ -296,5 +309,37 @@ hostnamectl
 hostnamectl set-hostname c2
 # 临时修改，重启后失效
 hostname c2
+```
+
+##  crontab
+
+- -e：编辑该用户的计时器设置
+- -l：列出该用户的计时器设置
+- -r：删除该用户的计时器设置
+- -u<用户名称>：指定要设定计时器的用户名称
+
+格式：
+
+minute   hour   day   month   week   command     顺序：分 时 日 月 周
+
+添加计时器：
+
+```bash
+crontab -e
+# 接下来添加一条，每小时执行一次syncwork
+* */1 * * * syncwork
+```
+
+[更多内容](https://wangchujiang.com/linux-command/c/crontab.html)
+
+## strings
+
+用于在包中查找字符串
+
+```bash
+# 查看glibc版本
+ldd --version
+strings /lib64/libc.so.6 | grep GLIBC
+
 ```
 

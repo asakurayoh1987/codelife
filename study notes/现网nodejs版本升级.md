@@ -1,45 +1,89 @@
 # CentOS7环境下Node.js版本升级记录
 
-## 一、升级gcc版本
+## 一、升级gcc到8.3.0
 
-Node.js对gcc版本有要求，默认的CentOS7的gcc版本是4.x，可通过`gcc -v`查看
+```bash
+# 也可使用阿里云镜像站：https://mirrors.aliyun.com/gnu/gcc/gcc-8.3.0/gcc-8.3.0.tar.gz
+wget https://ftp.gnu.org/gnu/gcc/gcc-8.3.0/gcc-8.3.0.tar.gz
+tar zxvf gcc-8.3.0.tar.gz
 
-**1. 需要安装devtoolset-8**
+cd gcc-8.3.0
+./contrib/download_prerequisites
+mkdir build
+cd build
+../configure --prefix=/usr/local/gcc-8.3.0 --enable-checking=release --enable-languages=c,c++ --disable-multilib
 
-https://www.softwarecollections.org/en/scls/rhscl/devtoolset-8/
+# 这里可以指定实际CPU核心数 
+make -j4
+make install
 
-安装后再次查看gcc版本，变更为8.3.1或更高版本
+# 修改环境变量
+echo -e '\n/usr/local/gcc-8.3.0/bin\n' >> /etc/profile
 
-**2. 激活**
+# 添加动态链接库配置
+echo -e '\n/usr/local/gcc-8.3.0/lib64\n' >> /etc/ld.so.conf.d/gcc.conf
+ldconfig
 
-- 方法一，直接进行文件替换：
+# 验证动态链接库是否正确，打印中可以看到：libstdc++.so.6 -> libstdc++.so.6.0.25
+ldconfig -v | grep c++
 
-  ```
-  mv /usr/bin/gcc /usr/bin/gcc-4.8.5
+# 验证gcc版本
+gcc --version
 
-  ln -s /opt/rh/devtoolset-8/root/bin/gcc /usr/bin/gcc
-
-  mv /usr/bin/g++ /usr/bin/g++-4.8.5
-
-  ln -s /opt/rh/devtoolset-8/root/bin/g++ /usr/bin/g++
-
-  gcc --version
-
-  g++ --version
-  ```
-
-
-
-- 方法二：
-
-  ```bash
-  # 每次启动时调用或将其添加到如~/.zshrc中
-  source /opt/rh/devtoolset-8/enable
-  ```
+```
 
 
 
-**3. 安装python3**
+## 二、升级make 4.3
+
+```bash
+wget https://ftp.gnu.org/gnu/make/make-4.3.tar.gz
+tar -zxvf make-4.3.tar.gz
+cd make-4.3
+./configure --prefix=/usr/local/make
+make -j4
+make install
+
+cd /usr/bin
+mv make make.bak
+ln -sv /usr/local/make/bin/make /usr/bin/make
+
+# 验证版本
+make --version
+```
+
+
+
+## 三、升级glibc 2.28
+
+```bash
+# https://www.gnu.org/software/libc/
+wget https://ftp.gnu.org/gnu/glibc/glibc-2.28.tar.gz
+tar -zxvf glibc-2.28.tar.gz
+cd glibc-2.28
+mkdir build && cd build
+../configure --prefix=/usr --disable-profile --enable-add-ons --with-headers=/usr/include --with-binutils=/usr/bin
+make -j4
+# 耗时比较久，如果有系统快照备份，可略过
+make check
+make install
+
+# 如果升级后报错尝试如下方式，如果还不行，就要用之前的快照来恢复了
+sln /usr/lib64/ld-2.17.so /usr/lib64/ld-linux-x86-64.so.2
+sln /usr/lib64/libc-2.17.so /lib64/libc.so.6
+
+# 如果使用locale命令时报错，则执行下面的操作
+make localedata/install-locales
+# 我自己环境中尝试时，仅执行上一步之后就不再乱码了
+make install
+
+# 验证 查看有“GLIBC_2.28”则表示成功
+strings /lib64/libc.so.6 | grep GLIBC_
+```
+
+![image-20221031195826237](../media/image-20221031195826237.png)
+
+## 四、安装python3
 
 ```bash
 yum install epel-release
@@ -48,7 +92,7 @@ yum install -y python3
 
 
 
-## 二、现网当前环境搭建
+## 五、现网当前环境搭建（模拟）
 
 Node.js版本v10.15.3，pm2版本3.5.0
 
@@ -64,7 +108,9 @@ npm i -g pm2@3.5.0
 
 ![image-20220922154604868](../media/image-20220922154604868.png)
 
-## 三、Node.js版本升级
+
+
+## 六、Node.js版本升级
 
 升级之前可使用如下命令查看当前pm2使用的Node.js版本
 
@@ -109,7 +155,7 @@ pm2 update
 
 
 
-## 四、现网组件梳理
+## 七、现网组件梳理
 
 ### 1. Act（5078）——旧活动
 
@@ -660,7 +706,7 @@ https://miniprogram.diyring.cc/ministatic/star/index.html#/select
 
 
 
-## 质效平台上构建脚本修改
+## 八、质效平台上构建脚本修改
 
 **主要涉及运行环境依赖Node.js运行时的组件，比如Union-Order**，修改构建所使用的Node.js版本
 
