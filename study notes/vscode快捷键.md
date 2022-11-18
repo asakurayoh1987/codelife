@@ -34,6 +34,7 @@ F1 或 Ctrl+Shift+P: 打开命令面板。在打开的输入框内，可以输�
 1. 聚集Extensions，Ctrl+Shift+X
 1. 聚集Search & Replace，Ctrl+Shift+H
 1. 隐藏或展示File Explorer，Ctrl+B
+1. 打开外部终端并定位到当前项目路径， Crtl+Shift+C
 
 ### 代码编辑
 

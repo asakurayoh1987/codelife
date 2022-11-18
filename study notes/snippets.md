@@ -240,6 +240,27 @@ let offset = 12345;
 offset &= ~1; 
 ```
 
+```javascript
+const isSupportWebp = (nature = 'lossy') => {
+  const strategies = Object.assign(Object.create(null), {
+    'lossy': 'UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsD+JaQAA3AAAAAA',  //有损
+    'lossless': 'UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA==',  // 无损
+    'alpha': 'UklGRkoAAABXRUJQVlA4WAoAAAAQAAAAAAAAAAAAQUxQSAwAAAARBxAR/Q9ERP8DAABWUDggGAAAABQBAJ0BKgEAAQAAAP4AAA3AAP7mtQAAAA==',  // 透明
+    'animation': 'UklGRlIAAABXRUJQVlA4WAoAAAASAAAAAAAAAAAAQU5JTQYAAAD/////AABBTk1GJgAAAAAAAAAAAAAAAAAAAGQAAABWUDhMDQAAAC8AAAAQBxAREYiI/gcA',  // 动图
+  })
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => (img.width > 0 && img.height > 0) && resolve(true)
+    img.onerror = () => resolve(false)
+    img.src = `data:image/webp;base64,${strategies[nature]}`
+  })
+}
+
+isSupportWebp().then(bool => {
+  // true 表示支持，false 表示不支持
+})
+```
+
 
 
 ## typescript
