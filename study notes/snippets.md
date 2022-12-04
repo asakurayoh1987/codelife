@@ -55,6 +55,11 @@ for ip in $(cat ip.txt); do
 done;
 ```
 
+```bash
+# git clone时指定--single-branch表示仅下载单个分支，--depth=1表示仅下载单个commit，这样速度会快几十倍，算是一个加速小技巧
+git clone --depth=1 --single-branch git@github.com:ant-design/ant-design.git
+```
+
 
 
 ## css
