@@ -10,7 +10,7 @@
 
 ```bash
 # 当前文件夹下所有png图片转换成jpg格式
-for image in *.png;                                                                                                                                   
+for image in *.png;
 do
 convert -quality 85 "$image" "${image%.*}.jpg";
 done
@@ -58,6 +58,34 @@ done;
 ```bash
 # git clone时指定--single-branch表示仅下载单个分支，--depth=1表示仅下载单个commit，这样速度会快几十倍，算是一个加速小技巧
 git clone --depth=1 --single-branch git@github.com:ant-design/ant-design.git
+```
+
+```bash
+# 替换当前目录下每个子git项目的远程地址
+for d in $(ls); do
+cd $d;
+# git remote set-url origin $(git remote -v | grep '(fetch)' | awk '{print $2}' | sed 's/git@git.iflytek.com:/ssh:\/\/git@code.iflytek.com:30004\//');
+# git remote -v
+git pull
+cd ..;
+done;
+```
+
+```bash
+oldIFS=${IFS};
+IFS=$'\n';
+
+for f in $(ls *.mp4);
+do
+  ffmpeg -i "$f" -f srt -i "`echo $f | sed s/.mp4/.srt/`" -c:v copy -c:a copy -c:s mov_text "`echo $f | sed s/.mp4/_merged.mp4/`";
+done;
+
+IFS=${oldIFS}
+```
+
+```bash
+# 打印powerlevel10k的颜色
+for i in {0..255}; do print -Pn "%K{$i}  %k%F{$i}${(l:3::0:)i}%f " ${${(M)$((i%6)):#3}:+$'\n'}; done
 ```
 
 
@@ -171,7 +199,7 @@ fetch('http://tech.iflytek.com/utp/forum/post/detail/12087', {
 })
   .then(resp => resp.json())
   .then(resp => console.log(resp.data.content));
-  
+
 ```
 
 ```javascript
@@ -242,7 +270,7 @@ Joi.object().keys({
 ```javascript
 let offset = 12345;
 // 将最后一位置为 0
-offset &= ~1; 
+offset &= ~1;
 ```
 
 ```javascript
@@ -264,6 +292,67 @@ const isSupportWebp = (nature = 'lossy') => {
 isSupportWebp().then(bool => {
   // true 表示支持，false 表示不支持
 })
+```
+
+```javascript
+// 获取Canvas指纹
+function getCanvasFp() {
+  var result = [];
+  var canvas = document.createElement('canvas');
+  canvas.width = 50;
+  canvas.height = 30;
+  canvas.style.display = 'inline';
+  var ctx = canvas.getContext('2d');
+  ctx.rect(0, 0, 10, 10);
+  ctx.rect(2, 2, 6, 6);
+  result.push(
+    'canvas winding:' +
+      (ctx.isPointInPath(5, 5, 'evenodd') === false ? 'yes' : 'no')
+  );
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#f60';
+  ctx.fillRect(1, 1, 10, 10);
+  ctx.fillStyle = '#069';
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.fillStyle = 'rgb(255,0,255)';
+  ctx.beginPath();
+  ctx.arc(0, 0, 10, 0, Math.PI * 2, true);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = 'rgb(0,255,255)';
+  ctx.beginPath();
+  ctx.arc(10, 10, 10, 0, Math.PI * 2, true);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = 'rgb(255,255,0)';
+  ctx.beginPath();
+  ctx.arc(20, 20, 20, 0, Math.PI * 2, true);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = 'rgb(255,0,255)';
+  if (canvas.toDataURL) {
+    var e = canvas.toDataURL().replace('data:image/png;base64,', '');
+    e = window.atob(e);
+    result.push('canvas fp:' + e);
+  }
+  return result.join('~');
+}
+
+```
+
+```javascript
+// 数字转转成可用于作为变量名的字符串
+const base54 = (function(){
+    var DIGITS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ$_";
+    return function(num) {
+            var ret = "";
+            do {
+                    ret = DIGITS.charAt(num % 54) + ret;
+                    num = Math.floor(num / 54);
+            } while (num > 0);
+            return ret;
+    };
+})();
 ```
 
 
@@ -337,7 +426,7 @@ type BitStr<T, R extends string = ''> = T extends [infer E extends string, ...in
 type T9 = BitStr<BuildArr<Binary, 2>>
 
 
-type BitBuild<T extends string, L extends number, Arr extends unknown[] = [], Result extends string = ''> = Arr['length'] extends L 
+type BitBuild<T extends string, L extends number, Arr extends unknown[] = [], Result extends string = ''> = Arr['length'] extends L
     ? Result
     : BitBuild<T, L, [...Arr, T], `${T}${Result}`>
 

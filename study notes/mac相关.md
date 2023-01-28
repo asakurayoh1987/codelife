@@ -37,3 +37,9 @@ sudo launchctl unload -w /System/Library/LaunchDaemons/org.apache.httpd.plist
 sudo launchctl load -w /System/Library/LaunchDaemons/org.apache.httpd.plist
 ```
 
+## 启动项
+
+地址：/Users/ycyu/Library/LaunchAgents
+
+通过brew安装的nginx，想在开机时自动启动，只需要将nginx安装位置下.plist文件的拷到上述目录
+

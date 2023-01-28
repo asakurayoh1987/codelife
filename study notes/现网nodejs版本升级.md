@@ -4,7 +4,7 @@
 
 ```bash
 # 也可使用阿里云镜像站：https://mirrors.aliyun.com/gnu/gcc/gcc-8.3.0/gcc-8.3.0.tar.gz
-wget https://ftp.gnu.org/gnu/gcc/gcc-8.3.0/gcc-8.3.0.tar.gz
+wget --no-check-certificate https://ftp.gnu.org/gnu/gcc/gcc-8.3.0/gcc-8.3.0.tar.gz
 tar zxvf gcc-8.3.0.tar.gz
 
 cd gcc-8.3.0
@@ -18,7 +18,7 @@ make -j4
 make install
 
 # 修改环境变量
-echo -e '\n/usr/local/gcc-8.3.0/bin\n' >> /etc/profile
+echo -e '\nexport PATH=/usr/local/gcc-8.3.0/bin:$PATH\n' >> /etc/profile
 
 # 添加动态链接库配置
 echo -e '\n/usr/local/gcc-8.3.0/lib64\n' >> /etc/ld.so.conf.d/gcc.conf
@@ -83,7 +83,56 @@ strings /lib64/libc.so.6 | grep GLIBC_
 
 ![image-20221031195826237](../media/image-20221031195826237.png)
 
-## 四、安装python3
+
+
+## 四、升级openssl 1.1.1k
+
+```bash
+wget https://www.openssl.org/source/openssl-1.1.1k.tar.gz
+tar -zxvf openssl-1.1.1k.tar.gz
+cd openssl-1.1.1k
+./config --prefix=/usr/local/openssl
+make -j8
+make install
+
+mv /usr/bin/openssl /usr/bin/openssl.bak
+mv /usr/include/openssl /usr/include/openssl.bak
+ln -s /usr/local/openssl/bin/openssl /usr/bin/openssl
+ln -s /usr/local/openssl/include/openssl /usr/include/openssl
+
+echo -e '\n/usr/local/openssl/lib\n' >> /etc/ld.so.conf.d/openssl.conf
+ldconfig -v
+
+openssl version
+```
+
+
+
+## 四、升级openssl 3.0.1
+
+```bash
+yum install -y perl-ExtUtils-CBuilder perl-ExtUtils-MakeMaker
+wget https://www.openssl.org/source/openssl-3.0.1.tar.gz
+tar -zxvf openssl-3.0.1.tar.gz
+cd openssl-3.0.1
+./config --prefix=/usr/local/openssl3/
+make -j8
+make install
+
+mv /usr/bin/openssl /usr/bin/openssl.old
+mv /usr/include/openssl/ /usr/include/openssl.old
+ln -s /usr/local/openssl3/bin/openssl /usr/bin/openssl
+ln -s /usr/local/openssl3/include/openssl /usr/include/openssl
+
+echo -e '\n/usr/local/openssl3/lib64\n' >> /etc/ld.so.conf.d/openssl.conf
+ldconfig -v
+
+openssl version
+```
+
+
+
+## 五、安装python3
 
 ```bash
 yum install epel-release
@@ -92,7 +141,7 @@ yum install -y python3
 
 
 
-## 五、现网当前环境搭建（模拟）
+## 六、现网当前环境搭建（模拟）
 
 Node.js版本v10.15.3，pm2版本3.5.0
 
@@ -110,7 +159,7 @@ npm i -g pm2@3.5.0
 
 
 
-## 六、Node.js版本升级
+## 七、Node.js版本升级
 
 升级之前可使用如下命令查看当前pm2使用的Node.js版本
 
@@ -127,9 +176,9 @@ pm2 monit
 
 ```bash
 # 安装版本的Node.js
-nvm install v16.17
+nvm install v18.12.1
 # 设置新版本的Node.js为默认版本
-nvm alias default v16.17
+nvm alias default v18.12.1
 # 将旧版本Node.js全局安装的包在新版本中重新安装
 nvm reinstall-packages v10.15.3
 # 更新pm2的版本（非必须）
@@ -155,7 +204,36 @@ pm2 update
 
 
 
-## 七、现网组件梳理
+## 八、现网组件梳理
+
+| 组件名                       | 标签                     | 备注                             |
+| ---------------------------- | ------------------------ | -------------------------------- |
+| Act                          | 非核心低流量             | 老的活动组件                     |
+| Grocery                      | 核心高流量（可能有推送） | 组件化活动相关                   |
+| Hybrid                       | 核心低流量               | 酷音APP相关内嵌页面              |
+| RingService                  | 核心高流量               | 版权试听能力服务                 |
+| RingTone                     | 非核心低流量             | 客户端振铃页面                   |
+| TrackServer                  | 核心低流量               | 轨迹服务                         |
+| UnionOrder                   | 核心高流量               | 统一订购页面                     |
+| finder                       | 核心低流量               | finder内嵌H5页面                 |
+| h5-chinaunicom-aimusic-proxy | 其他                     | 成都维护，之前看没有流量         |
+| h5act                        | 核心低流量               | 非SSR的活动页面                  |
+| h5actssr                     | 核心低流量（可能有推送） | 基于Nuxt的活动页面               |
+| h5bigscreen                  | 核心低流量               | 音乐数据看板（老板看）           |
+| h5iflymusic                  | 核心低流量               | 讯飞音乐官网                     |
+| h5itocoo                     | 非核心低流量             | 讯飞图库官网                     |
+| h5lyrics                     | 核心低流量               | 词曲家官网（作者端）             |
+| h5purchase                   | 核心低流量               | 词曲家官网（采买端）             |
+| h5music                      | 其它                     | 讯飞音乐旧版官网，之前看没有流量 |
+| h5ring                       | 核心高流量               | 音频彩铃站点                     |
+| itocoo                       | 其它                     | 讯飞图库旧版官网，之前看没有流量 |
+| vring                        | 核心高流量               | 视频彩铃站点                     |
+| musician                     | 其它                     | OPPO音乐人，现在应该没流量了     |
+| cxmusic                      | 其它                     | 成都创响，之前看没有流量         |
+| ministatic                   | 其它                     | 成都维护，之前看功能已经不全了   |
+| InGrocery                    | 其它                     | AI作词页面，仅内网访问           |
+
+
 
 ### 1. Act（5078）——旧活动
 
@@ -236,6 +314,14 @@ https://h5.kuyin123.com/client/page/ios/1cc04b158f5f73ae?supportsetring=1#/home
 https://h5.kuyin123.com/client/hybrid/page/index.html
 
 https://h5.kuyin123.com/client/rights/renew/agreement.html
+
+https://h5.kuyin123.com/client/hybrid/page/index.html
+https://h5.kuyin123.com/client/hybrid/tone/index.html
+https://h5.kuyin123.com/client/rights/kyservice.html
+https://h5.kuyin123.com/client/rights/agreement.html?app=%E9%85%B7%E9%9F%B3
+https://h5.kuyin123.com/client/rights/ky-agreement.html
+https://h5.kuyin123.com/client/page/ios/1cc04b158f5f73ae?supportsetring=1   
+https://h5.kuyin123.com/client/page/share/ring/KAZ001/7706/1125176025903267840
 
 
 
@@ -333,6 +419,13 @@ https://migu.diyring.cc/track/ges/get?distance=516.0
 
 http://172.31.114.108:3006/union/page/miguv2
 
+http://172.22.143.165:3006/union/api/v1/q_cols?cn=1111&an=HGG001&pi=002&v=1.0.00&btp=0&id=242805&r=
+0.6793124951479654&t=1670232865523
+
+ https://order.diyring.cc/union/api/v1/q_ring?cn=9168&id=1420658392287936512&tc=51d73187da9c46dfa8acaedfff2271ac&t=1670313343156&op=0
+
+https://order.diyring.cc/union/api/v2/q_mrc?cn=5036&v=1.0.00&pi=002&an=HCS001&phone=17755105631&id=1552560837921603585&tp=0&flow=1&r=0.19368180399485113&t=1670326826419
+
 
 
 ### 8. finder(515)——音乐Finder相关的H5分享页面
@@ -392,6 +485,16 @@ http://172.31.114.108:3011/h5actcdn/guess-emoji/img/sound.40053d0b.png
 ---
 
 https://game.diyring.cc/actlm/5490b6018b88a43e/321997?nh=128&at=1&ta=0&fc=0#/home
+
+https://game.diyring.cc/actlm/6437b390408f50c5/321997?type=vivo#/
+
+https://game.diyring.cc/actlm/9e7d146d6bb88249/321997?type=vivo#/
+
+https://game.diyring.cc/actlm/9e31c7487088a710/321997?nh=96&at=1&ta=0&fc=0#/
+
+https://game.diyring.cc/actlm/f2f8488c17b81945/321997?nh=64&at=1&ta=0&fc=0#/home
+
+https://game.diyring.cc/actlm/5490b6018b88a43e/321997?nh=96&at=1&ta=0&fc=0#/home
 
 
 
@@ -703,10 +806,12 @@ https://miniprogram.diyring.cc/ministatic/star/index.html#/select
 
 ​      },
 
+https://inadmin.kuyin123.com/grocery/business-code/index.html
 
 
 
-## 八、质效平台上构建脚本修改
+
+## 九、质效平台上构建脚本修改
 
 **主要涉及运行环境依赖Node.js运行时的组件，比如Union-Order**，修改构建所使用的Node.js版本
 

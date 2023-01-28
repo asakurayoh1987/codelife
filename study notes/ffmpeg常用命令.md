@@ -332,3 +332,10 @@ reference https://ffmpeg.org/ffmpeg.html#Stream-copy
 reference https://trac.ffmpeg.org/wiki/Encode/H.264#CRFExample
 the example shows -c:a copy did not re-encode, guess this option is not needed here.
 And 0 is lossless, 23 is the default, and 51 is worst quality possible 😢
+
+## 字幕合并
+
+```bash
+ffmpeg -i infile.mp4 -f srt -i infile.srt -c:v copy -c:a copy -c:s mov_text outfile.mp4
+```
+
