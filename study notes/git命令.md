@@ -24,3 +24,5 @@
 
 - git config --global core.quotepath false
 - 终端的字符集改成utf-8
+- git config --global i18n.commitencoding utf-8
+- git config --global i18n.logoutputencoding utf-8

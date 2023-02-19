@@ -88,6 +88,21 @@ IFS=${oldIFS}
 for i in {0..255}; do print -Pn "%K{$i}  %k%F{$i}${(l:3::0:)i}%f " ${${(M)$((i%6)):#3}:+$'\n'}; done
 ```
 
+```bash
+# 获取本机公网ip地址
+curl 'https://open.kuyin123.com/q_ip'
+```
+
+```bash
+# 统计接口请求耗时
+grep q_mrc unionorder.log_20230103 | grep 'call service' | grep '"0000"' |  jq .service.res.cost | awk 'BEGIN {max=0;min=65536} {if ($1+0<min+0) min=$1 fi;if ($1+0>max+0) max=$1 fi;sum+=$1} END{print "max=",max,"min=",min,"times=",NR,"avg=",sum/NR}'
+```
+
+```bash
+# 统计接口请求耗时在指定值范围的调用次数
+grep '"http://172.22.145.102/h5/q_biz"' unionorder.log_20230103 | grep 'call service' | grep '"0000"' | jq -c '{"tc": .service.req.id, "phone":.service.req.params.phone,"cost":.service.res.cost} | select(.cost <= 3000)' | wc -l
+```
+
 
 
 ## css
