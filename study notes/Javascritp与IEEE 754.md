@@ -2,6 +2,8 @@
 
 [知乎原文](https://zhuanlan.zhihu.com/p/30703042)
 
+[JavaScript 浮点数运算的精度问题 - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/191395766)
+
 Javascript只有一种数字类型：Number，它包括了整型与小数，遵循的是IEEE 754的一个子集，使用64位双精度来表示
 
 其中64位包括：

@@ -69,13 +69,11 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/too
 
 参见[这里](https://github.com/jeremyFreeAgent/oh-my-zsh-powerline-theme)
 
-* 安装插件
-
+* 安装插件[参照](https://gist.github.com/n1snt/454b879b8f0b7995740ae04c5fb5b7df)
 	* [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting)
 	* [zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions)
 	* [autojump](https://github.com/wting/autojump)
 	* [git open](https://github.com/paulirish/git-open)
-
 * 配置插件
 
 ```bash

@@ -103,6 +103,16 @@ grep q_mrc unionorder.log_20230103 | grep 'call service' | grep '"0000"' |  jq .
 grep '"http://172.22.145.102/h5/q_biz"' unionorder.log_20230103 | grep 'call service' | grep '"0000"' | jq -c '{"tc": .service.req.id, "phone":.service.req.params.phone,"cost":.service.res.cost} | select(.cost <= 3000)' | wc -l
 ```
 
+```bash
+# jq多条件搜索
+cat result.log | jq '. | select((.phone=="13843140031") and .opdesc=="sendOrderResult")'
+```
+
+```bash
+# 获取某个包
+npm info --loglevel=silent @ring-order/sdk | grep -oP '(?<=latest: )((\d+\.){2}\d+)'
+```
+
 
 
 ## css
@@ -370,6 +380,34 @@ const base54 = (function(){
 })();
 ```
 
+```javascript
+  function urlencode(str) {
+    str = (str + '').toString();
+    return encodeURIComponent(str).replace(/!/g, "%21").replace(/'/g, "%27").replace(/\(/g, "%28").replace(/\)/g, "%29").replace(/\*/g, "%2A").replace(/%20/g, "+");
+  }
+```
+
+```javascript
+// 判断是否是html开始标签的正则匹配
+const ncname = '[a-zA-Z_][\\w\\-\\.]*'
+const qnameCapture = `((?:${ncname}\\:)?${ncname})`
+const startTagOpen = new RegExp(`^<${qnameCapture}`)
+
+// 以开始标签开始的模板
+'<div></div>'.match(startTagOpen) // ["<div", "div", index: 0, input: "<div></div>"]
+
+// 以结束标签开始的模板
+'</div><div>我是Berwin</div>'.match(startTagOpen) // null
+
+// 以文本开始的模板
+'我是Berwin</p>'.match(startTagOpen) // null
+```
+
+```javascript
+// 兼容OPPO R9s的vconsole版本
+https://kuyin.iflysec.com/ycyu/debug/vconsole.min.js
+```
+
 
 
 ## typescript
@@ -467,5 +505,14 @@ free -g
 ```bash
 # 查看系统发行版本
 cat /etc/redhat-release
+```
+
+## 微信相关
+
+```javascript
+// 关闭H5页面，退出到微信界面
+function fnClose(){
+  WeixinJSBridge.call('closeWindow');
+}
 ```
 
