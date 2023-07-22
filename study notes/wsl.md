@@ -48,6 +48,8 @@ sudo apt-get install build-essential curl file git -y
 
 ## 安装zsh
 
+[参见外链](https://gist.github.com/n1snt/454b879b8f0b7995740ae04c5fb5b7df)
+
 [官方安装说明](https://github.com/ohmyzsh/ohmyzsh/wiki/Installing-ZSH)
 
 ```bash

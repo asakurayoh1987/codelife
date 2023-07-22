@@ -113,7 +113,15 @@ cat result.log | jq '. | select((.phone=="13843140031") and .opdesc=="sendOrderR
 npm info --loglevel=silent @ring-order/sdk | grep -oP '(?<=latest: )((\d+\.){2}\d+)'
 ```
 
+```bash
+# 这里用到的jq在取字段时，如果字段有特殊字符在里面时的用法
+grep x-requested-with unionorder.log_20230611 | jq '.req.headers."x-requested-with"' | sort | uniq -c | sort -nr | head -n 100
+```
 
+```bash
+# curl请求的各阶段耗时统计
+curl -o /dev/null -sS -w "DNS Lookup: %{time_namelookup}s\nConnect: %{time_connect}s\nApp Connect: %{time_appconnect}s\nPre-transfer: %{time_pretransfer}s\nRedirect: %{time_redirect}s\nStart Transfer: %{time_starttransfer}s\nTotal time: %{time_total}s\n" 'https://kuyin.iflysec.com/union-ycyu/api/v1/q_base?btp=1&cid=975d3f8c4f82012d&from=ycyu'
+```
 
 ## css
 
@@ -513,6 +521,36 @@ cat /etc/redhat-release
 // 关闭H5页面，退出到微信界面
 function fnClose(){
   WeixinJSBridge.call('closeWindow');
+}
+```
+
+## pinia
+
+```typescript
+// store/index.ts
+import type { App } from 'vue';
+import { createPinia } from 'pinia';
+
+// 注意这里创新并导出了pinia的实例
+export const store = createPinia();
+
+export function setupStore(app: App) {
+  app.use(store);
+}
+
+// store/modules/app/index.ts
+import { defineStore } from 'pinia';
+// 省略中间代码
+// 导入上一个文件中导出的pinia实例
+import { store } from '@/store';
+
+export const useAppStore = defineStore('app-store', {
+  // 省略中间代码
+});
+
+// 重点是这个，手动添加pinia实例
+export function useAppStoreWithOut() {
+	return useAppStore(store);
 }
 ```
 

@@ -43,3 +43,17 @@ sudo launchctl load -w /System/Library/LaunchDaemons/org.apache.httpd.plist
 
 通过brew安装的nginx，想在开机时自动启动，只需要将nginx安装位置下.plist文件的拷到上述目录
 
+## 使用ssh后反复提示需要密码
+
+```bash
+ssh-add -K ~/.ssh/id_rsa
+```
+
+## 关于mac地址
+
+1. networksetup -listallhardwareports 查看当前所有端口Mac地址
+1. sudo ifconfig en0 ether e4:ce:8f:32:51:82 修改mac地址
+1. ifconfig en1 | grep ether //查看是否修改成功,这里修改的是虚拟Mac,看硬件是看不出来的
+
+**电脑重启mac地址复原**
+

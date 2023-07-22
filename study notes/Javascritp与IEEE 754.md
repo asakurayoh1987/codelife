@@ -50,3 +50,101 @@ $$
 下面再以 `0.1` 为例解释浮点误差的原因，`0.1` 转成二进制表示为 `0.0001100110011001100`(1100循环)，`1.100110011001100x2^-4`，所以 `E=-4+1023=1019`；M 舍去首位的1，得到 `100110011...`。最终就是：
 
 ![IEEE754_demo](https://oss.kuyinyun.com/11W2MYCO/rescloud1/3f8f03403fbf4ae5960b6ffc90d22935.png)
+
+举例（这里直接贴了gtp4生成的答案）
+
+十进制数3.14转换成单精度浮点数表示的具体步骤：
+
+To convert the decimal number 3.14 to a single-precision floating-point number, we need to follow the IEEE 754 standard for floating-point arithmetic. Single-precision floating-point numbers use 32 bits, with 1 bit for the sign, 8 bits for the exponent, and 23 bits for the mantissa.
+
+Here are the steps to convert 3.14 to a single-precision floating-point number:
+
+1. Determine the sign bit: Since 3.14 is a positive number, the sign bit is **0**.
+
+2. Convert the integer part (3) to binary:
+
+```
+3 (decimal) = 11 (binary)
+```
+
+
+
+3. Convert the fractional part (0.14) to binary:
+
+Multiply the fractional part by 2 repeatedly and take the integer part at each step:
+
+```
+  0.14 * 2 = 0.28 -> 0
+
+  0.28 * 2 = 0.56 -> 0
+
+  0.56 * 2 = 1.12 -> 1
+
+  0.12 * 2 = 0.24 -> 0
+
+  ...
+```
+
+
+
+The binary representation of the fractional part is 0.0010....
+
+4. Combine the integer and fractional parts in binary:
+
+ ```
+ 3.14 (decimal) = 11.0010... (binary)
+ ```
+
+
+
+5. Normalize the binary number:
+
+Move the binary point to the right of the most significant bit (MSB) and count the number of places moved. This will be the exponent value.
+
+```
+11.0010... (binary) = 1.10010... x 2^1 (normalized)
+```
+
+
+
+6. Calculate the biased exponent:
+
+Add the bias value (127 for single-precision) to the exponent value.
+
+```
+1 (exponent) + 127 (bias) = 128
+```
+
+
+
+7. Convert the biased exponent to binary:
+
+```
+128 (decimal) = 10000000 (binary)
+```
+
+
+
+8. Determine the mantissa:
+
+Remove the leading 1 from the normalized binary number and take the first 23 bits.
+
+```
+1.10010... (normalized) -> 10010... (mantissa, 23 bits)
+```
+
+
+
+9. Combine the sign bit, biased exponent, and mantissa:
+
+```
+0 (sign) | 10000000 (biased exponent) | 10010001111010111000011 (mantissa)
+```
+
+
+
+The single-precision floating-point representation of 3.14 is 01000000010010001111010111000011 in binary.
+
+ 这个答案与工具处理的结果一致：
+
+![image-20230614130653429](../media/image-20230614130653429.png)
