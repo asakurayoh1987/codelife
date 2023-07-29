@@ -554,3 +554,30 @@ export function useAppStoreWithOut() {
 }
 ```
 
+## webpack
+
+```json
+// babel-loader配置
+{
+  test: /\.js$/,
+  exclude: /(node_modules|bower_components)/,
+  use: {
+    loader: 'babel-loader',
+    options: {
+      presets: [
+        [
+          'env',
+          {
+            modules: false, // 禁用babel-preset-env的模块化规范转化
+          },
+        ],
+        'stage-2', //建议使用成熟度较高的试验性规范
+      ],
+      // 其他插件，根据项目具体需求自由搭配
+      plugins: [require('babel-plugin-transform-object-rest-spread')],
+    },
+  },
+};
+
+```
+
