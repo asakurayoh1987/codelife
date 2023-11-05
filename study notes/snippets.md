@@ -23,7 +23,7 @@ ffmpeg -i 曾经的你.mp3 2>&1 | grep -Eo 'Duration: [^\s,]+' | cut -d ' ' -f2
 
 ```bash
 # 查询当前目录下的mp4文件，每行传入一个给mv命令，将其移动到指定目录下
-# -n指定每次输出条目数，这里传1，每次传入一个地址
+# -n 指定每次输出条目数，这里传1，每次传入一个地址
 # -I 用户指定一个占位符，在后续命令中可以使用这个占位符
 find . -name "*.mp4" | xargs -n1 -I{} mv {} ~/Downloads/sketch教程
 ```
@@ -123,6 +123,13 @@ grep x-requested-with unionorder.log_20230611 | jq '.req.headers."x-requested-wi
 curl -o /dev/null -sS -w "DNS Lookup: %{time_namelookup}s\nConnect: %{time_connect}s\nApp Connect: %{time_appconnect}s\nPre-transfer: %{time_pretransfer}s\nRedirect: %{time_redirect}s\nStart Transfer: %{time_starttransfer}s\nTotal time: %{time_total}s\n" 'https://kuyin.iflysec.com/union-ycyu/api/v1/q_base?btp=1&cid=975d3f8c4f82012d&from=ycyu'
 ```
 
+```bash
+# 批量上传图片
+ls | xargs -I {} node /Users/yudiechao/Documents/myproject/node-project/src/img-uploader/upload.js {}
+```
+
+
+
 ## css
 
 ```css
@@ -166,13 +173,13 @@ html::-webkit-scrollbar-track {
 }
 ```
 
-```javascript
-// 将如“my-component”转成“MyComponent”
-const classifyRE = /(?:^|[-_])(\w)/g
-const classify = str => str
-  .replace(classifyRE, c => c.toUpperCase())
-  .replace(/[-_]/g, '')
+```css
+/* 控制滚动链 */
+overscroll-behavior: contain;
+
 ```
+
+[整屏滚动的css实现——scroll-snap-\*属性](https://css-tricks.com/practical-css-scroll-snapping/)
 
 
 
@@ -182,7 +189,6 @@ const classify = str => str
 # nvm安装node版本
 nvm install v14.19.0 --reinstall-packages-from=v14.17.0
 ```
-
 
 
 ## javascript
@@ -416,6 +422,48 @@ const startTagOpen = new RegExp(`^<${qnameCapture}`)
 https://kuyin.iflysec.com/ycyu/debug/vconsole.min.js
 ```
 
+```javascript
+// 中文转unicode
+function chineseToUnicode(str) {
+  let unicodeStr = '';
+  for (let i = 0; i < str.length; i++) {
+    // 获取字符的Unicode码点
+    const unicodeChar = str.charCodeAt(i).toString(16);
+    // 添加'\u'前缀并拼接到结果字符串中
+    unicodeStr += '\\u' + unicodeChar.padStart(4, '0');
+  }
+  return unicodeStr;
+}
+
+// 如果在chrome里执行，配合copy函数就可以实现复制
+copy(chineseToUnicode('6、活动页面所有内容仅用于彩铃推广。'))
+```
+
+```javascript
+// 将如“my-component”转成“MyComponent”
+const classifyRE = /(?:^|[-_])(\w)/g
+const classify = str => str
+  .replace(classifyRE, c => c.toUpperCase())
+  .replace(/[-_]/g, '')
+```
+
+```javascript
+// 设置返回页面是否返回原滚动位置，默认是“auto”，可以设置为"manual"
+history.scrollRestoration
+```
+
+```javascript
+const x = document.all;
+// 这里的if条件是成立的
+if (typeof x === 'undefined' && x.length > 0) {
+  console.log('hello fatfish');
+}
+
+console.log(x);
+console.log(typeof x);
+console.log(x === undefined);
+```
+
 
 
 ## typescript
@@ -493,6 +541,158 @@ type BitBuild<T extends string, L extends number, Arr extends unknown[] = [], Re
 
 type T10 = BitBuild<Binary,3>
 ```
+
+```typescript
+enum ShapeType {
+  Circle = "circle",
+  Rectangle = "rectangle",
+}
+
+type ShapeBase<T extends ShapeType> = { type: T };
+
+type Circle = ShapeBase<ShapeType.Circle> & { radius: number };
+type Rectangle = ShapeBase<ShapeType.Rectangle> & {
+  width: number;
+  height: number;
+};
+
+type Shape = Circle | Rectangle;
+
+type GetShapeArea<T extends Shape> = (shape: T) => number;
+
+const getCircleShapeArea: GetShapeArea<Circle> = (circle: Circle) =>
+  Math.PI * circle.radius ** 2;
+
+const getRectangleShapeArea: GetShapeArea<Rectangle> = (rectangle: Rectangle) =>
+  rectangle.width * rectangle.height;
+
+/**
+ * 关于Extract的用户参见：https://www.typescriptlang.org/docs/handbook/utility-types.html#extracttype-union
+ * Extract<Type, Union>表示从Type中提取可以被赋值给Union类型的类型
+ * 比如下方，假设K为ShapeType.Circle时，则Shape中只有Circle是可以被赋值给{ type: ShapeType.Circle }的，因为Circle的类型为 { type: ShapeType.Circle, radius: number}
+ */
+const getShapeAreaByShapeType: {
+  [K in ShapeType]: GetShapeArea<Extract<Shape, { type: K }>>;
+} = {
+  [ShapeType.Circle]: getCircleShapeArea,
+  [ShapeType.Rectangle]: getRectangleShapeArea,
+};
+
+const getShapeArea: GetShapeArea<Shape> = (shape: Shape): number => {
+  const _getShapeArea = getShapeAreaByShapeType[shape.type] as GetShapeArea<
+    Shape
+  >;
+  return _getShapeArea(shape);
+};
+
+const circle: Circle = { type: ShapeType.Circle, radius: 10 };
+const rectangle: Rectangle = {
+  type: ShapeType.Rectangle,
+  width: 10,
+  height: 5
+};
+
+const shapes: Shape[] = [circle, rectangle];
+
+console.log(shapes.map(getShapeArea)); // Output: [314.1592653589793, 50]
+```
+
+```typescript
+type A = 1 | 2 | 3;
+// means: Does every member of the union type A extend the numeric literal 1
+// B = 1 | 2 | 3
+type B = A extends 1 ? never : A
+
+// Does the currently evaluated union member extend the numerical literal 1
+type DelOne<T> = T extends 1 ? never: T
+// C = 2 | 3
+type C = DelOne<A>
+```
+
+### 关于TypeScript中的“branded type”或称为“nominal typing”
+
+这种语法是 TypeScript 中的一个高级类型表示，它用于创建一个被称作 "nominal typing" 或 "branded type" 的效果。在 TypeScript 中，默认情况下是结构化的类型系统（structural typing），这意味着如果两个不同的类型结构相同，它们就被认为是兼容的。但在某些情况下，我们希望即使两个类型结构相同，也应该将它们视为不兼容的类型，这就是 "nominal typing" 或 "branding" 的用途。
+
+下面的代码：
+
+```typescript
+type UserId = string & { readonly brand: unique symbol };
+```
+
+在这个类型中：
+
+- `string & { readonly brand: unique symbol }` 表示 `UserId` 类型是一个 `string` 类型和一个含有唯一符号属性 `brand` 的交叉类型。
+- `readonly brand: unique symbol` 为 `UserId` 类型添加了一个名为 `brand` 的只读属性，其类型为 `unique symbol`。`unique symbol` 是一个特殊的类型，表示一个独一无二的 symbol。
+- 这个 `brand` 属性实际上并不会在运行时存在，它仅仅是在编译时用于类型检查的。这种方法可以让 TypeScript 编译器对待 `UserId` 类型和其他的 `string` 类型（例如 `OrderId` 类型）作为不兼容的类型，虽然它们在运行时都是字符串。
+
+下面是如何使用这种类型的示例：
+
+```typescript
+type UserId = string & { readonly brand: unique symbol };
+type OrderId = string & { readonly brand: unique symbol };
+
+function createUserId(id: string): UserId {
+  return id as UserId;
+}
+
+function createOrderId(id: string): OrderId {
+  return id as OrderId;
+}
+
+let userId = createUserId("user-123");
+let orderId = createOrderId("order-456");
+
+// 下面的赋值会在编译时出错，因为虽然 UserId 和 OrderId 在运行时都是字符串，但它们被视为不同的类型。
+userId = orderId; // Error: Type 'OrderId' is not assignable to type 'UserId'.
+```
+
+在这个示例中，即使 `UserId` 和 `OrderId` 都可以在运行时表示为字符串，TypeScript 编译器仍然认为它们是不同的类型，并且不允许它们相互赋值。这就达到了区分同质类型的目的，这在处理需要类型安全的场景（如处理 ID、密钥等）时特别有用。
+
+下面是一种工具函数的实现：
+
+```typescript
+// BrandedTypeBuilder.ts
+export class BrandedTypeBuilder<T> {
+  private readonly _creator: (value: any) => T;
+
+  constructor(creator: (value: any) => T) {
+    this._creator = creator;
+  }
+
+  get(value: any): T {
+    return this._creator(value);
+  }
+}
+
+type UserId = string & { readonly brand: unique symbol };
+type EmailAddress = string & { readonly brand: unique symbol };
+
+const createUserId = (value: string): UserId => {
+  // Validation here
+  return value as UserId;
+}
+
+const createEmailAddress = (value: string): EmailAddress => {
+  // Validation here, etc.
+  return value as EmailAddress;
+}
+
+// BuilderInstances.ts
+import { BrandedTypeBuilder } from './BrandedTypeBuilder';
+
+export const userIdBuilder = new BrandedTypeBuilder<UserId>(createUserId);
+export const emailAddressBuilder = new BrandedTypeBuilder<EmailAddress>(createEmailAddress);
+
+// someComponent.tsx
+import { userIdBuilder, emailAddressBuilder } from './builderInstances';
+
+// Use the builders as needed
+const userId = userIdBuilder.get('my-string');
+const emailAddress = emailAddressBuilder.get('example@example.com');
+
+// Your component code...
+```
+
 
 
 ## linux
@@ -579,5 +779,101 @@ export function useAppStoreWithOut() {
   },
 };
 
+```
+
+## vue
+
+```vue
+import {
+  h,
+  defineAsyncComponent,
+  defineComponent,
+  ref,
+  onMounted,
+  AsyncComponentLoader,
+  Component,
+} from 'vue';
+
+type ComponentResolver = (component: Component) => void
+
+export const lazyLoadComponentIfVisible = ({
+  componentLoader,
+  loadingComponent,
+  errorComponent,
+  delay,
+  timeout
+}: {
+  componentLoader: AsyncComponentLoader;
+  loadingComponent: Component;
+  errorComponent?: Component;
+  delay?: number;
+  timeout?: number;
+}) => {
+  let resolveComponent: ComponentResolver;
+
+  return defineAsyncComponent({
+    // the loader function
+    loader: () => {
+      return new Promise((resolve) => {
+        // We assign the resolve function to a variable
+        // that we can call later inside the loadingComponent 
+        // when the component becomes visible
+        resolveComponent = resolve as ComponentResolver;
+      });
+    },
+    // A component to use while the async component is loading
+    loadingComponent: defineComponent({
+      setup() {
+        // We create a ref to the root element of 
+        // the loading component
+        const elRef = ref();
+
+        async function loadComponent() {
+            // `resolveComponent()` receives the
+            // the result of the dynamic `import()`
+            // that is returned from `componentLoader()`
+            const component = await componentLoader()
+            resolveComponent(component)
+        }
+
+        onMounted(async() => {
+          // We immediately load the component if
+          // IntersectionObserver is not supported
+          if (!('IntersectionObserver' in window)) {
+            await loadComponent();
+            return;
+          }
+
+          const observer = new IntersectionObserver((entries) => {
+            if (!entries[0].isIntersecting) {
+              return;
+            }
+
+            // We cleanup the observer when the 
+            // component is not visible anymore
+            observer.unobserve(elRef.value);
+            await loadComponent();
+          });
+
+          // We observe the root of the
+          // mounted loading component to detect
+          // when it becomes visible
+          observer.observe(elRef.value);
+        });
+
+        return () => {
+          return h('div', { ref: elRef }, loadingComponent);
+        };
+      },
+    }),
+    // Delay before showing the loading component. Default: 200ms.
+    delay,
+    // A component to use if the load fails
+    errorComponent,
+    // The error component will be displayed if a timeout is
+    // provided and exceeded. Default: Infinity.
+    timeout,
+  });
+};
 ```
 

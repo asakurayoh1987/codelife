@@ -8,8 +8,8 @@
 # 比如如下，将'https://itunes.apple.com/cn/app/id1342633958?mt=8'替换为'https://apps.apple.com/cn/app/id1469010110'
 :%s #https://itunes.apple.com/cn/app/id1342633958?mt=8'#https://apps.apple.com/cn/app/id1469010110
 
-s 替换当前行
-%s 全文替换
+s 查找当前行
+%s 全文查找，要全局替换，还要在末尾添加上'/g'
 ```
 
 [更多关于查找和替换的内容](https://www.cnblogs.com/huxinga/p/7942194.html)
@@ -65,3 +65,7 @@ set ignorecase
 - 方法三：
   - 光标移到开始行
   - 假设从当选行复制到136行，则输入：y136G
+
+## 删除指定范围的行
+
+- 比如删除3~5行，在命令模式下：3,5d
