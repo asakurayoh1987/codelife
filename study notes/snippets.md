@@ -128,6 +128,25 @@ curl -o /dev/null -sS -w "DNS Lookup: %{time_namelookup}s\nConnect: %{time_conne
 ls | xargs -I {} node /Users/yudiechao/Documents/myproject/node-project/src/img-uploader/upload.js {}
 ```
 
+```bash
+# 当前目录中查找非路径中不包括node_modules的js或ts文件，并且其内容中包含了指定字符串的文件
+find . -type f \( -name "*.js" -o -name "*.ts" \) -not -path "*/node_modules/*" -exec grep -q '/api/v1/q_a_url' {} \; -print
+```
+
+```bash
+# 将mp4转成webp动图
+# 用的是libwebp_anim，压缩出来的图片更小，如果使用libwebp，如下参数压缩出来的图片文件要大一倍
+ffmpeg -i 11.mp4 -vcodec libwebp_anim -filter:v fps=fps=10 -lossless 0 -loop 0 -compression_level 4 -q:v 70 -preset picture -an -vsync 0 -s 800:600 output.webp
+```
+
+```bash
+# 从curl的结果中提取信息，注意，如果使用了-v参数，curl会将结果输出到错误流中
+curl -v https://abring.diyring.cc/friend/e4cd1658adb7e42f7c0271126b11eeeb\?isImmersive\=true 2>&1 | tail -n5 | head -n1 | awk '{print $NF}' | grep 'exp_tag='
+
+# 仅输出需要匹配的部分
+curl -v https://abring.diyring.cc/friend/e4cd1658adb7e42f7c0271126b11eeeb\?isImmersive\=true 2>&1 | grep -o -E 'exp_tag=\d+%\d+'
+```
+
 
 
 ## css
@@ -875,5 +894,11 @@ export const lazyLoadComponentIfVisible = ({
     timeout,
   });
 };
+```
+
+## git
+
+```bash
+git config --global core.editor "code --wait"
 ```
 

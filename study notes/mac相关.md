@@ -57,3 +57,18 @@ ssh-add -K ~/.ssh/id_rsa
 
 **电脑重启mac地址复原**
 
+## 开启Core Dump
+
+```bash
+# 确认/cores目录有写入权限
+sudo chmod 1777 /cores
+# 检查内核状态是否开启Core-Dump
+# 查看
+sudo sysctl kern.coredump
+# 如果不是1则设置
+sudo sysctl kern.coredump=1
+# 在执行需要进行core dump的应用之前，设置如下，来设置当前shell为core-dump做好准备，切换shell后失效
+ulimit -c unlimited
+
+```
+

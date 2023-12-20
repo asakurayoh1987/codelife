@@ -1,0 +1,1 @@
+通过`C:\Windows\System32\inetsrv\config\applicationHost.config`找到网站的`id`，然后根据`id`找到日志目录下对应的站点名称即可

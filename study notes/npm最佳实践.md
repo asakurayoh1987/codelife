@@ -2,17 +2,43 @@
 
 ## 一、命令
 
-- npx npm-packlist
+- `npx npm-packlist`
 
   用于发布npm包之前查看将被包含在所发布的版本包中的内容
 
-- npm publish --dry-run
+- `npm publish --dry-run`
 
   查看publish命令实际将会做什么
 
-- npm publish --access=public
+- `npm publish --access=public`
 
   用于发布scope包时修改包的可访问性，因为scope包默认是私有的，也可以修改package.json中的private字段为false，来将其公开
+  
+- `npm docs [package-name]`
+
+  查看指定npm包的文档
+  
+- `npm repo [package-name]`
+
+  查看指定npm包的git仓库
+
+- `npm outdated`
+
+  检查当前项目中所有包的版本情况，包括当前版本号、要求的版本号以及最新的版本号
+
+- `npm v [package-name] versions`
+
+  查看指定npm包的所有历史版本
+
+- `npm audit [--fix]`
+
+  查看当前项目所使用的包是否存在漏洞（需要向默认的registry发送请求并提交当前的依赖配置）并得到一份建议，如果指定了`--fix`参数，则会自动应用返回的建议（升级包的版本）
+  
+- `npm version [major|minor|patch|]`
+
+  修改版本号，major-主版本号；minor-次版本号；patch-修订版本号
+
+
 
 ## 二、构建CommonJS模块和ECMAScript模块
 
