@@ -72,3 +72,10 @@ ulimit -c unlimited
 
 ```
 
+更多可以参考[这里](https://medium.com/sthima-insights/taming-the-dragon-using-llnode-to-debug-your-node-js-application-fc54c6efd0f1)
+
+- 包括在在程序运行过程中保存并生成`core dump`的方法`lldb --attach-pid ${pid} -b -o 'process save-core "core.${pid}"'`
+- 包括如何使用`llnode`来调试`core dump`
+
+
+

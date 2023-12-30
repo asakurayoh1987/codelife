@@ -147,7 +147,21 @@ curl -v https://abring.diyring.cc/friend/e4cd1658adb7e42f7c0271126b11eeeb\?isImm
 curl -v https://abring.diyring.cc/friend/e4cd1658adb7e42f7c0271126b11eeeb\?isImmersive\=true 2>&1 | grep -o -E 'exp_tag=\d+%\d+'
 ```
 
+```bash
+# 查看level=50的日志，即错误日志
+cat h5ring.log_20231220 | jq '. | select(.level==50)'
+```
 
+```bash
+cat songs.json | fx '.[].musicInfoList' '.map(x=>{const {musicId,...rest} = x; return {...rest, id:musicId}})' > songs_m.json
+```
+
+```bash
+cat data.json | fx '.assets' '.filter(x=>x.u)' '.map(x=>x.u+x.p)' | jq -r '.[]' | while read -r url; do
+echo "processing $url"
+curl -s "$url" | base64
+done
+```
 
 ## css
 
@@ -481,6 +495,128 @@ if (typeof x === 'undefined' && x.length > 0) {
 console.log(x);
 console.log(typeof x);
 console.log(x === undefined);
+```
+
+```javascript
+// 自己实现一个JSON.stringify方法
+const jsonstringify = (data) => {
+  // Check if an object has a circular reference
+  const isCyclic = (obj) => {
+  // Use the Set data type to store detected objects
+  let stackSet = new Set()
+  let detected = false
+
+  const detect = (obj) => {
+    // If it is not an object type, you can skip it directly
+    if (obj && typeof obj != 'object') {
+      return
+    }
+    // When the object to be checked already exists in the stackSet, it means that there is a circular reference
+    if (stackSet.has(obj)) {
+      return detected = true
+    }
+    // Save the current obj as a stackSet
+    stackSet.add(obj)
+
+    for (let key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        detect(obj[key])
+      }
+    }
+    // After the level detection is completed, delete the current object to prevent misjudgment
+    /*
+      For example:
+      an object's attribute points to the same reference. 
+      If it is not deleted, it will be regarded as a circular reference
+      let tempObj = {
+        name: 'fatfish'
+      }
+      let obj4 = {
+        obj1: tempObj,
+        obj2: tempObj
+      }
+    */
+    stackSet.delete(obj)
+  }
+
+  detect(obj)
+
+  return detected
+}
+
+  // 7#:
+  // Executing this method on an object that contains a circular reference throws an error.
+
+  if (isCyclic(data)) {
+    throw new TypeError('Converting circular structure to JSON')
+  }
+
+  // 9#: An error is thrown when trying to convert a value of type BigInt
+  // An error is thrown when trying to convert a value of type bigint
+  if (typeof data === 'bigint') {
+    throw new TypeError('Do not know how to serialize a BigInt')
+  }
+
+  const type = typeof data
+  const commonKeys1 = ['undefined', 'function', 'symbol']
+  const getType = (s) => {
+    return Object.prototype.toString.call(s).replace(/\[object (.*?)\]/, '$1').toLowerCase()
+  }
+
+  // not an object
+  if (type !== 'object' || data === null) {
+    let result = data
+    // 4#：The numbers Infinity and NaN, as well as the value null, are all considered null.
+    if ([NaN, Infinity, null].includes(data)) {
+      result = 'null'
+      // 1#：undefined, Function, and Symbol are not valid JSON values. 
+      // If any such values are encountered during conversion they are either omitted (when found in an object) or changed to null (when found in an array). 
+      // JSON.stringify() can return undefined when passing in "pure" values like JSON.stringify(function() {}) or JSON.stringify(undefined).
+    } else if (commonKeys1.includes(type)) {
+      return undefined
+    } else if (type === 'string') {
+      result = '"' + data + '"'
+    }
+
+    return String(result)
+  } else if (type === 'object') {
+    // 5#: If the value has a toJSON() method, it's responsible to define what data will be serialized.
+    // 6#: The instances of Date implement the toJSON() function by returning a string (the same as date.toISOString()). 
+    // Thus, they are treated as strings.
+    if (typeof data.toJSON === 'function') {
+      return jsonstringify(data.toJSON())
+    } else if (Array.isArray(data)) {
+      let result = data.map((it) => {
+        // 1#: If any such values are encountered during conversion they are either omitted (when found in an object) or changed to null (when found in an array). 
+        return commonKeys1.includes(typeof it) ? 'null' : jsonstringify(it)
+      })
+
+      return `[${result}]`.replace(/'/g, '"')
+    } else {
+      // 2#：Boolean, Number, and String objects are converted to the corresponding primitive values during stringification, in accord with the traditional conversion semantics.
+      if (['boolean', 'number'].includes(getType(data))) {
+        return String(data)
+      } else if (getType(data) === 'string') {
+        return '"' + data + '"'
+      } else {
+        let result = []
+        // 8#: All the other Object instances (including Map, Set, WeakMap, and WeakSet) will have only their enumerable properties serialized.
+        Object.keys(data).forEach((key) => {
+          // 3#: All Symbol-keyed properties will be completely ignored, even when using the replacer function.
+          if (typeof key !== 'symbol') {
+            const value = data[key]
+            // 1#: undefined, Function, and Symbol are not valid JSON values.
+            if (!commonKeys1.includes(typeof value)) {
+              result.push(`"${key}":${jsonstringify(value)}`)
+            }
+          }
+        })
+
+        return `{${result}}`.replace(/'/, '"')
+      }
+    }
+  }
+}
 ```
 
 

@@ -242,3 +242,45 @@ getColor(myCar);  // Subsequent access: rapid retrieval via IC
 
 ![img](../media/1msVe5EZdKhfOQUYaG_h4OQ.png)
 
+## 八、JSON.stringify转换规则
+
+1. undefined、Function、Symbol不是有效的JSON值，在转换时，要么直接被省去（当出现在对象中）或被转换为null（当出现在数组中），如果传入的是“纯值”，则返回undefined，比如：
+
+   ![img](../media/1*a3rt1LccB48LTw0EbVQDNA.png)
+
+   ![img](../media/1*U1IDqZ2nZ1U-iM9iaD5KSA.png)
+
+   ![img](../media/1*7OB3ttCEdC1fvwZJ4S94gw.png)
+
+2. Boolean、Number、String对象会转换成其对应的原始值类型
+
+   ![img](../media/1*azPPZ4khflyzYlRi_MvVoQ.png)
+
+3. 所有键类型为Symbol的属性，在转换时都会直接被忽略
+
+   ![img](../media/1*SKe9Zi5T9SbsElqfo7NhVw.png)
+
+4. 对于Infinity、NaN和null，都会被转成null
+
+   ![img](../media/1*lBE4SICwzFHgh5o57r_FPg.png)
+
+5. 如果被转换的值有`toJSON()`方法，则直接使用其返回的值
+
+   ![img](../media/1*Rp5EuMALPAxVQaRvvasnLQ.png)
+
+6. Date实例实现了`toJSON()`方法，并返回字符串形式（与`date.toISOString()`一致）
+
+   ![img](../media/1*54vbcPZJKD-29LJCJeKD6w.png)
+
+7. 如果对象包含了一个循环引用，在序列化时会抛出异常
+
+   ![img](../media/1*GHzMaV3lBhpi-5oyttTOww.png)
+
+8. 其他所有`Object`的实例，只有当它的属性是可以枚举时才会被序列化
+
+   ![img](../media/1*_oogEuvBDsL5rqiGRgLBIw.png)
+
+9. 对于类型为`BigInt`的值进行序列化时会报错
+
+   ![img](../media/1*fmAKda7VK-PB9AdRmGVjdA.png)
+

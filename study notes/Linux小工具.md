@@ -4,7 +4,7 @@
 
 [官网README](https://github.com/nakabonne/pbgopy/blob/main/README.md)
 
-```bash
+```sibash
 pbgopy serve
 export PBGOPY_SERVER=http://host:port
 # 复制
