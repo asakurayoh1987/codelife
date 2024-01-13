@@ -284,3 +284,221 @@ getColor(myCar);  // Subsequent access: rapid retrieval via IC
 
    ![img](../media/1*fmAKda7VK-PB9AdRmGVjdA.png)
 
+## 九、使用频率低但有用的API
+
+### 9.1. Blob API
+
+用来处理二进制数据，可以很方便的将数据转成二进制，或从二进制中读取数据
+
+```javascript
+// Create a Blob object
+const myBlob = new Blob(["Hello, world!"], { type: "text/plain" });
+// Read the data of the Blob object
+const reader = new FileReader();
+reader. addEventListener("loadend", () => {
+  console.log(reader.result);
+});
+reader.readAsText(myBlob);
+```
+
+### 9.2. WeakSet
+
+```javascript
+const myWeakSet = new WeakSet();
+const obj1 = {};
+const obj2 = {};
+myWeakSet.add(obj1);
+myWeakSet.add(obj2);
+console.log(myWeakSet.has(obj1)); // true
+obj1 = null;
+console.log(myWeakSet.has(obj1)); // false
+```
+
+### 9.3 TextEncoder与TextDecoder
+
+用来处理字符串与字节序列之间的转换
+
+```javascript
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+const myString = "Hello, world!";
+const myBuffer = encoder.encode(myString);
+console.log(myBuffer); // Uint8Array(13) [72, 101, 108, 108, 111, 44, 32, 119, 111, 114, 108, 100, 33]
+const decodedString = decoder.decode(myBuffer);
+console.log(decodedString); // "Hello, world!"
+```
+
+### 9.4 Proxy API 与 Reflect API
+
+### 9.5 IntersectionObserver
+
+### 9.6 Symbol
+
+可以利用它的唯一性来实现私有属性
+
+```javascript
+const mySymbol = Symbol("mySymbol");
+const myObject = {
+	[mySymbol]: "This is a private property",
+	publicProperty: "This is a public property",
+};
+console.log(myObject[mySymbol]); // "This is a private property"
+console.log(myObject.publicProperty); // "This is a public property"
+```
+
+### 9.7 Generator API
+
+### 9.8 Web Workers
+
+用于在后台启一个线程去执行Javascript，以便提升性能以及实现一些复杂的计算
+
+### 9.9 AudioContext
+
+可用于实现一些音频处理的操作：录音、音效处理
+
+```javascript
+const audioContext = new AudioContext();
+fetch("https://example.com/audio.mp3")
+	.then((response) => response.arrayBuffer())
+	.then((arrayBuffer) => audioContext.decodeAudioData(arrayBuffer))
+	.then((audioBuffer) => {
+ const source = audioContext.createBufferSource();
+ source.buffer = audioBuffer;
+ source.connect(audioContext.destination);
+ source.start();
+ });
+```
+
+## 十、多浏览器窗口下的状态同步
+
+### 1. 通过`storage`事件
+
+该事件的触发条件为：在同一网站的其它会话中修改了local storage中的值时，当前会话会接受到该事件，反之亦然
+
+![img](../media/1*otw7fDvd-XFjj9yVBxn5zg.png)
+
+### 2. 通过SharedWorker
+
+### 3. 通过BroadcastChannel API
+
+## 十一、浏览器自带API
+
+### 1. Custom Events API
+
+```javascript
+// trigger
+window.dispatchEvent(new CustomEvent('mycustomevent', {
+    detail: {
+        msg: 'Hello'
+    }
+}));
+
+// catch
+window.addEventListener('mycustomevent', (evt) => {
+    console.log(evt.detail.msg); // Hello
+});
+```
+
+### 2. Sanitizer API
+
+```javascript
+const sanitizer = new Sanitizer();
+const rawHTML = await getRawHTMLFromServer();
+
+docArea.replaceChildren(sanitizer.sanitizeFor('div', rawHTML));
+```
+
+### 3. 操作CSS与DOM
+
+```javascript
+// 操作CSS
+headerElm.classList.replace('cl-green', 'cl-red');
+headerElm.classList.toggle('active');
+
+// DOM选择
+const activeStepNodes = document.querySelectorAll('.app .steps li.active');
+
+// 获取所有a标签
+const linkNodes = document.links;
+
+// 获取和操作DOM
+const titleNode = mainSection.closest('.title');
+titleNode.after(subTitleNode);
+titleNode.prepend(bulletNode);
+```
+
+### 4. 现代Web应用可用的事件
+
+```javascript
+// 页面可见性
+document.addEventListener('visibilitychange', () => {
+    console.log(document.visibilityState);   // 'visible' or 'hidden' 
+});
+
+// 滚动到底部
+document.addEventListener('scrollend', async () => {
+    await loadItems(); 
+});
+
+// 网络变化
+window.addEventListener('online', () => {
+    console.log('online');
+});
+
+window.addEventListener('offline', () => {
+    console.log('offline');
+});
+```
+
+### 5. WebAssembly and Worker API
+
+WebAssembly，以Zig为例
+
+```zig
+export fn add(a: i32, b: i32) i32 {
+    return a + b;
+}
+```
+
+```bash
+zig build-lib -target wasm32-freestanding -dynamic add.zig 
+```
+
+```html
+<html>
+<body>
+  <script>
+    fetch('add.wasm').then(r => r.arrayBuffer()
+    ).then(bytes => WebAssembly.instantiate(bytes)
+    ).then(r => {
+      const add = r.instance.exports.add;
+      console.log(add(10, 20));
+    });
+  </script>
+</body>
+</html>
+```
+
+Web Worker
+
+```javascript
+const wr = new Worker('background_task.js');
+wr.onmessage = (e) => console.log(e.data);
+```
+
+### 6. Observer API
+
+- ResizeObserver
+- IntersectionObserver
+- MutationObserver
+
+### 7. Web Animation API
+
+### 8. API Index
+
+[MDN的网站](https://developer.mozilla.org/en-US/docs/Web/API)记录了这些API
+
+[You Dont Need jQuery](https://github.com/camsong/You-Dont-Need-jQuery?tab=readme-ov-file)
+
+
+

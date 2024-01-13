@@ -163,6 +163,30 @@ curl -s "$url" | base64
 done
 ```
 
+```bash
+# 过滤ip地址，然后查询ip归属地
+node app.js | awk '{print $5}' | sort | uniq -c | sort -r | head -n20 | awk '{print $2}' | fx -r 'fetch(`http://ip-api.com/json/${x}`)' '.json()' '({query,country,city})=>({ip:query,country,city})'
+```
+
+
+
+```bash
+# 白金会员 fx '({retcode,url})=>({retcode, url})'
+cat songs_m.json | jq -r '.[].id' | fx -r 'fetch(`http://client.diyring.cc/h5res/q_ring_audition?pi=002&an=HGG001&v=1.0.00&cn=5223&btp=1&lcc=CN&lp=%E5%AE%89%E5%BE%BD&lc3%E6%96%AF%E5%8F%B0%E9%9F%B3%E5%B8%83%E6%8B%89%E6%A0%BC&contentid=${x}&type=2&phone=18256922923&chargeid=10150005&di=b40d531e3722421d842cd08115a1d376&tc=b40d531e3722421d842cd08115a1d376`)' '.json()' | fx '.retcode'
+
+# 等价方式
+cat songs_m.json | jq -r '.[].id' | while read -r id; do                                                                           
+curl -s "http://client.diyring.cc/h5res/q_ring_audition?pi=002&an=HGG001&v=1.0.00&cn=5223&btp=1&lcc=CN&lp=%E5%AE%89%E5%BE%BD&lc3%E6%96%AF%E5%8F%B0%E9%9F%B3%E5%B8%83%E6%8B%89%E6%A0%BC&contentid=$id&type=2&phone=18256922923&chargeid=10150005&di=b40d531e3722421d842cd08115a1d376&tc=b40d531e3722421d842cd08115a1d376" | jq '.retcode'
+done
+```
+
+```bash
+# mp4转3gp
+ffmpeg -i a.mp4 -vcodec libx264 -x264-params "nal-hrd=none" -refs 3 -vprofile baseline -level 30 -keyint_min 3 -r 30 -g 30 -b:v 600k -maxrate 900k -vf "scale=540:960:force_original_aspect_ratio=decrease,pad=540:960:(ow-iw)/2:(oh-ih)/2" -acodec libvo_amrwbenc -ar 16000 -ac 1 a.3gp
+```
+
+
+
 ## css
 
 ```css
@@ -619,6 +643,23 @@ const jsonstringify = (data) => {
 }
 ```
 
+```javascript
+// 对html中的特殊字符进行转义
+const escape = (str) => str.replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]))
+```
+
+```javascript
+// 单词首字母大写处理
+const uppercaseWords = (str) => str.replace(/^(.)|\s+(.)/g, (c) => c.toUpperCase())
+// 横线分隔转驼峰
+const toCamelCase = (str) => str.trim().replace(/[-_\s]+(.)?/g, (_, c) => (c ? c.toUpperCase() : ''));
+```
+
+```javascript
+// 检测是否开启深色模式
+const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+```
+
 
 
 ## typescript
@@ -1036,5 +1077,53 @@ export const lazyLoadComponentIfVisible = ({
 
 ```bash
 git config --global core.editor "code --wait"
+```
+
+## cypress
+
+```bash
+# 使用淘宝镜像安装
+CYPRESS_DOWNLOAD_PATH_TEMPLATE='https://registry.npmmirror.com/-/binary/cypress/${version}/${platform}-${arch}/cypress.zip' npm i -D cypress --audit=false
+```
+
+## html
+
+<img src="../media/1*RrdTaZwuoA9m9aUCFkWCfQ.png" alt="img" style="zoom:33%;" />
+
+<img src="../media/1*2TNiQ8v-Ye9XyBITZQ-yjQ.png" alt="img" style="zoom:33%;" />
+
+用于SEO，表示一段引用 
+
+<img src="../media/1*yfgcPOsfDr0DvIZ7aG9GZA.png" alt="img" style="zoom:33%;" />
+
+## svg
+
+```svg
+<svg xmlns="http://www.w3.org/2000/svg" width="10" height="12">
+  <g fill-rule="evenodd">
+    <rect width="2" height="12" x="8" rx="1">
+      <animate attributeName="height" dur="1.2s" repeatCount="indefinite" values="12;3;12" />
+      <animate attributeName="y" dur="1.2s" repeatCount="indefinite" values="0;9;0;" />
+    </rect>
+    <rect width="2" height="12" x="4" rx="1">
+      <animate attributeName="height" begin="-.1" dur="1.2s" keyTimes="0;0.2;1" repeatCount="indefinite"
+        values="12;3;12" />
+      <animate attributeName="y" begin="-.1" dur="1.2s" keyTimes="0;0.2;1" repeatCount="indefinite" values="0;9;0;" />
+    </rect>
+    <rect width="2" height="12" y="9" rx="1">
+      <animate attributeName="height" begin="-.6" dur="1.2s" repeatCount="indefinite" values="12;3;12" />
+      <animate attributeName="y" begin="-.6" dur="1.2s" repeatCount="indefinite" values="0;9;0;" />
+    </rect>
+  </g>
+</svg>
+```
+
+## git
+
+```bash
+# 以指定格式输出日志，这里分别为：提交历史 - 作者,时间 : 提交信息
+git log --pretty=format:"%h - %an,%ar : %s" OPPO账号一键登录文档.md
+# 基于此，我们就可以打印任何一个文件的历史作者，paste命令用于将多行合并成一行，-s表示合并所行，-d用于指定分隔符，-表示读取来自标准输入的数据
+git log --pretty=format:"%an" 音频彩铃业务流程总览.md | sort | uniq | paste -sd ',' -
 ```
 
