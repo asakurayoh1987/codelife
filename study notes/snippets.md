@@ -131,6 +131,12 @@ ls | xargs -I {} node /Users/yudiechao/Documents/myproject/node-project/src/img-
 ```bash
 # 当前目录中查找非路径中不包括node_modules的js或ts文件，并且其内容中包含了指定字符串的文件
 find . -type f \( -name "*.js" -o -name "*.ts" \) -not -path "*/node_modules/*" -exec grep -q '/api/v1/q_a_url' {} \; -print
+
+# 当前目录中查找指定文件类型，并排除指定文件夹以及指定名称的文件，并打印出完整的文件路径
+find ./ -type f -name "*.md" -not -name "README.md" -not -name "weblink.md" -not -path "*/node_modules/*" -not -path "*/work/*" -not -path "*/design/*" -not -path "*/topic/*" -not -path "*/ycyu/*" -not -path "*/jbhan2/*" -exec echo "$(pwd)/{}" \;
+
+# 在当前目录下查找rust的项目，并在其目录下执行cargo clean
+find ./ -type f -name "Cargo.toml" -execdir cargo clean \;
 ```
 
 ```bash
@@ -183,6 +189,25 @@ done
 ```bash
 # mp4转3gp
 ffmpeg -i a.mp4 -vcodec libx264 -x264-params "nal-hrd=none" -refs 3 -vprofile baseline -level 30 -keyint_min 3 -r 30 -g 30 -b:v 600k -maxrate 900k -vf "scale=540:960:force_original_aspect_ratio=decrease,pad=540:960:(ow-iw)/2:(oh-ih)/2" -acodec libvo_amrwbenc -ar 16000 -ac 1 a.3gp
+```
+
+```bash
+awk -F'[?&]' '{
+    source="none"; # 默认假设没有source参数
+    for(i=2; i<=NF; i++) { # 遍历URL的查询参数
+        split($i, arr, "="); # 按等号分割参数
+        if(arr[1] == "source") {
+            source=arr[2]; # 如果找到source参数，更新source变量
+            break; # 找到后就不再继续查找
+        }
+    }
+    count[source]++; # 根据source的值增加计数
+}
+END {
+    for(s in count) { # 最后，输出每个source及其计数
+        print s ": " count[s];
+    }
+}' urls.txt
 ```
 
 
@@ -1095,6 +1120,13 @@ CYPRESS_DOWNLOAD_PATH_TEMPLATE='https://registry.npmmirror.com/-/binary/cypress/
 用于SEO，表示一段引用 
 
 <img src="../media/1*yfgcPOsfDr0DvIZ7aG9GZA.png" alt="img" style="zoom:33%;" />
+
+```html
+<!-- 声明当前页面支持浅色与深色模式，在部分安卓机器上，系统就不会由来干涉，做颜色上的调整了 -->
+<meta name="color-scheme" content="light dark">
+```
+
+
 
 ## svg
 

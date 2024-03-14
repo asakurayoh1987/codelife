@@ -181,7 +181,7 @@ export default {
    ```
 
 
-## 六、基于YAML语法的前言
+## 六、基于YAML语法的文档前言
 
 VitePress支持YAML语法的的前言（利益于gray-matter这个库），但它必须位于markdown文件内容的最前面，并且使用如下格式：
 
@@ -467,6 +467,206 @@ export default {
   }
 }
 ```
+
+### `createContentLoader`
+
+对内容向的页面，比如博客，虽然可以直接使用`data loader api`，但考虑到这个是一个比较通用的场景，VitePress也提供了一个工具`createContentLoader`来简化这个场景
+
+```javascript
+// posts.data.js
+import { createContentLoader } from 'vitepress
+
+export default createContentLoader('post/*.md', /* options */)
+```
+
+这个工具函数的第一个参数是一个`glob pattern`，从`source directory`指定的位置进行匹配，最终返回一个`{ watch, load }`这样的`data loader object`，**它会自动过滤非markdown文件**
+
+加载的数据被组成成一个对象数组的，其类型为`ContentData[]`
+
+```typescript
+interface ContentData {
+  // mapped URL for the page. e.g. /posts/hello.html (does not include base)
+  // manually iterate or use custom `transform` to normalize the paths
+  url: string
+  // frontmatter data of the page
+  frontmatter: Record<string, any>
+
+  // the following are only present if relevant options are enabled
+  // we will discuss them below
+  src: string | undefined
+  html: string | undefined
+  excerpt: string | undefined
+}
+```
+
+使用方式：
+
+```vue
+<script setup>
+import { data as posts } from './posts.data.js'
+</script>
+
+<template>
+  <h1>All Blog Posts</h1>
+  <ul>
+    <li v-for="post of posts">
+      <a :href="post.url">{{ post.frontmatter.title }}</a>
+      <span>by {{ post.frontmatter.author }}</span>
+    </li>
+  </ul>
+</template>
+```
+
+关于`Options`可以参见[这里](https://vitepress.dev/guide/data-loading#options)
+
+### `Configuration`
+
+```typescript
+import type { SiteConfig } from 'vitepress'
+
+const config: SiteConfig = (globalThis as any).VITEPRESS_CONFIG
+```
+
+## 十一、配置
+
+### 1. Site Config
+
+位置：`<root>/.vitepress/config.[ext]`，`ext`可以是`.js`、`.ts`、`.mjs`、`.mts`
+
+**推荐使用ESM语法**
+
+#### 1.1 title
+
+站点标题，同时也作为单独每个页面标题的默认后缀，单独页面的最终标题为其第一个`<h1>`标签的内容拼接上该配置项作为的后缀（这个是在不配置`titleTemplate`的前提下，如果配置了，则以`titleTemplate`为准 ）
+
+#### 1.2 titleTemplate
+
+可以用来定制每个单独页面的标题后缀或整个标题部分，在使用时可以用`:title`表示单独页面的标题内容占位
+
+#### 1.3 description
+
+站点描述信息
+
+#### 1.4 head
+
+用于自定义网站的`head`部分的内容，其类型为`HeadConfig[]`，默认值是`[]`
+
+```typescript
+type HeadConfig =
+  | [string, Record<string, string>]
+  | [string, Record<string, string>, string]
+```
+比如这里添加水滴埋点例：
+
+```javascript
+head: [
+    [
+      'script',
+      {},
+      `!function(e,n,t,a,s,u,c,m){e[a]?e[a].queueName=u:e[a]={queueName:u},e[u]=e[u]||function(){(e[u].q=e[u].q||[]).push(arguments)},e[a].l=1*new Date,c=n.createElement(t),m=n.getElementsByTagName(t)[0],c.async=1,c.src=s,m.parentNode.insertBefore(c,m)}(window,document,"script","_webAnalyst","//s1.voicecloud.cn/resources/anls/wa.js?ver=1.0.3","_wa");_wa('*','set','site','6709dcd729604bbda167d87e15a5276c');`,
+    ],
+  ],
+```
+
+#### 1.5 lang
+
+配置网站语言属性(`<html lang="en-US">`)
+
+#### 1.6 base
+
+用于指定站点的部署的目录 ，默认为`/`，如果部署地址中涉及子目录 ，比如当前我们配置的是`base: '/h5blog/'`，则访问时的地址为`https://kuyin.iflysec.com/h5blog/index`
+
+### 2. Routing
+
+暂时用不上，后续用到了再补
+
+### 3. Build
+
+#### 3.1 srcDir
+
+markdown文件存放的位置，使用相对于项目root的路径
+
+#### 3.2 srcExclude
+
+需要排除的markdown文件，比如
+
+```javascript
+export default {
+  srcExclude: ['**/README.md', '**/TODO.md']
+}
+```
+
+#### 3.3 outDir
+
+构建产物输出的目录位置，也是相对于项目root的路径 
+
+#### 3.4 assetsDir
+
+用于指定资源文件输出的位置，它必须位于`outDir`指定的目录之下，并且是相对于它的路径
+
+#### 3.5 cacheDir
+
+缓存文件的位置，一般不用修改，是相对于项目root的路径，默认为`./.vitepress/cache`
+
+#### 3.6 ignoreDeadLinks
+
+暂时用不上，后续用到了再补
+
+#### 3.7 mpa
+
+暂时用不上，后续用到了再补
+
+### 4. Theming
+
+#### 4.1 apperance
+
+是否开启深色模式
+
+- true（默认值）：根据当前用户设置决定是否开启深色模式
+- dark：默认使用深色模式，用户可以手动切换
+- false：则用户无法切换主题色
+
+至于`apperance.initialValue`只能是`dark`或`undefined`
+
+注意，这里其实是使用了localstorage缓存了上次的配置项，这样在页面加载之前就知道是否要使用深色模式，避免了加载时的闪动，但也导致修改了配置项后，要手动把这个key清掉才会生效
+
+#### 4.2 lastUpdated
+
+暂时用不上，后续用到了再补
+
+### 5. Customization
+
+#### 5.1 markdown
+
+markdown相关的配置，具体见官方文档中的类型声明
+
+#### 5.2 vite
+
+vite的配置项
+
+#### 5.3 vue
+
+@vitejs/plugin-vue的配置项
+
+### 6. Build Hooks
+
+暂时用不上，后续用到了再补
+
+### 7. Default Theme Config
+
+与Default Theme节内容很多相同，主要是用于定制单个文档，暂不考虑使用
+
+### 8. Default Theme Config
+
+挑几个用得到的说明一下
+
+####
+
+
+
+
+
+
 
 
 

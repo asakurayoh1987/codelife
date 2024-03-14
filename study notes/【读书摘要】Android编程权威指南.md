@@ -1640,3 +1640,244 @@ startActivity(intent)
 
 #### 15.4.4 检查可响应任务的activity
 
+用于处理系统找不到匹配的activity时如何处理（**如果不处理应用就会崩溃**）
+
+解决办法是首先通过操作系统中的PackageManager类进行自检
+
+```kotlin
+suspectButton.apply {
+    val pickContactIntent =
+        Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI)
+    setOnClickListener {
+        pickContactActivityForResult.launch(pickContactIntent)
+    }
+    // 检查应用是否存在
+    val packageManager: PackageManager = requireActivity().packageManager
+    val resolvedActivity: ResolveInfo? =
+        // flag标志MATCH_DEFAULT_ONLY限定只搜索带CATEGORY_DEFAULT标志的activity
+        packageManager.resolveActivity(pickContactIntent, PackageManager.MATCH_DEFAULT_ONLY)
+    // 如果找不到，必须禁用嫌疑人按钮，否则应用就会崩溃
+    if (resolvedActivity == null) {
+        isEnabled = false
+    }
+}
+```
+
+### 15.5 挑战练习：又一个隐匿intent（待）
+
+## 第16章 使用intent拍照
+
+### 16.1 布置照片
+
+### 16.2 文件存储
+
+`Context`类提供的基本文件和目录处理函数如下"
+
+- `getFilesDir()`：File获取`/data/data/<包名>/files`目录
+- `openFileInput(name: String)`：`FileInputStream`打开现有文件进行读取
+- `openFileOutput(name: String, mode: Int)`：`FileOutputStream`打开文件进行写入，如果不存在就创建它
+- `getDir(name: String, mode: Int)`： File获取`/data/data/<包名>/`目录的子目录（如果不存在就先创建它）
+- `fileList(...)`：`Array<String>`获取主文件目录下的文件列表，可与其他函数配合使用，比如`openFileInput(String)`
+
+#### 16.2.1 使用FileProvider
+
+```xml
+<activity
+...
+</activity>
+<provider
+    android:name="androidx.core.content.FileProvider"
+    android:authorities="com.bignerdranch.android.criminalintent.fileprovider"
+    android:exported="false"
+    android:grantUriPermissions="true">
+    <meta-data
+        android:name="android.support.FILE_PROVIDER_PATHS"
+        android:resource="@xml/files" />
+</provider>
+```
+
+#### 16.2.2 指定照片存放位置
+
+### 16.3 使用相机intent
+
+### 16.4 缩放和显示位图
+
+### 16.5. 功能声明
+
+### 16.6 挑战练习：优化照片显示（待）
+
+### 16.7 挑战练习：优化缩略图加载（待）
+
+## 第17章 应用本地化
+
+### 17.1 资源本地化
+
+#### 17.1.1 默认资源
+
+应为所有资源提供默认资源。没有配置修饰符的资源就是Android的默认资源。如果无法找到匹配当前配置的资源，Android就会使用默认资源。默认资源至少能保证应用正常运行
+
+**Android默认资源使用规则并不适用于屏幕显示密度**
+
+> 最终的选择取决于对屏幕尺寸和显示密度的综合考虑。Android甚至可能会选择低于或高于当前设备屏幕密度的drawable资源，然后通过缩放去适配设备。无论如何，请记住一点：不要在res/drawable/目录下放置默认的drawable资源
+
+#### 17.1.2 检查资源本地化完成情况
+
+Android Studio提供了资源翻译编辑器这个工具。这个便利工具能集中查看资源翻译完成情况
+
+<img src="../media/image-20240119130113964.png" alt="image-20240119130113964" style="zoom:50%;" />
+
+<img src="../media/image-20240119130133006.png" alt="image-20240119130133006" style="zoom:50%;" />
+
+#### 17.1.3 区域修饰符
+
+配置修饰符不区分大小写。但最好遵守Android命名约定：语言代码小写，区域代码大写，但前面加个小写的r，比如西班牙语可以使用：-es-rES修饰符，其中，r代表区域，ES是西班牙语的ISO 3166-1-alpha-2标准码
+
+### 17.2 配置修饰符
+
+目前为止，我们已见过好几个配置修饰符，它们都用于提供可选资源，比如语言（values-zh）、屏幕方向（layout-land）和屏幕显示密度（drawable-mdpi）
+
+#### 17.2.1 可用资源优先级排定
+
+当出现设备配置与好几个可选资源都匹配时，会按下表的顺序确定修饰符的使用优先级
+
+<img src="../media/image-20240123121739216.png" alt="image-20240123121739216" style="zoom: 33%;" />
+
+#### 17.2.2 多重配置修饰符
+
+**可以在同一资源目录上使用多个配置修饰符，这需要各配置修饰符按照优先级别顺序排列**。因此，values-zh-w600dp是一个有效的资源目录名，values-w600dp-zh目录名则无效。（在新建资源文件对话框中，工具会自动配置正确的目录名。）
+
+#### 17.2.3 寻找最匹配的资源
+
+1. 排除不兼容的目录：先排除不兼容当前设置配置的资源
+2. 按优先级表排除不兼容的目录：以MCC（移动国家码）为例，如果有任何以MCC为修改符的资源目录，那么所有不带MCC修饰符的都会被排除
+
+### 17.3 测试备选资源
+
+利用图形布局工具有很多选项，用以预览布局在不同配置下的显示效果
+
+<img src="../media/image-20240123124934422.png" alt="image-20240123124934422" style="zoom:33%;" />
+
+### 17.4 深入学习：确定设备屏幕尺寸
+
+Android提供了三种修饰符，用于测试设备尺寸
+
+1. wXXXdp：可用宽度大于或等于XXXdp
+2. hXXXdp：可用高度大于或等于XXXdp
+3. swXXXdp：最小宽度或高度（看哪个更小）大于或等于XXXdp
+
+### 17.5 挑战练习：日期显示本地化（待）
+
+## 第18章 Android辅助功能
+
+### 18.1 TalkBack
+
+TalkBack是Google开发的Android屏幕阅读器
+
+#### 18.1.1 点击浏览
+
+#### 18.1.2 线性浏览
+
+### 18.2 实现非文字型元素可读
+
+#### 18.2.1 添加内容描述
+
+给部件添加内容描述，比如在xml中添加`android:contentDescription`或在代码中使用`someView.setContentDescription(xxx)`函数
+
+#### 18.2.2 实现部件可聚焦
+
+通过`android:focusable`或`android:contentDescription`可以让部件可聚焦
+
+### 18.3 提升辅助体验
+
+```kotlin
+// 根据照片是否存在动态调整部件的contentDescription属性
+private fun updatePhotoView() {
+    if (photoFile.exists()) {
+        val bitmap = getScaledBitmap(photoFile.path, requireActivity())
+        photoView.setImageBitmap(bitmap)
+        photoView.contentDescription = getString(R.string.crime_photo_image_description)
+    } else {
+        photoView.setImageDrawable(null)
+        photoView.contentDescription = getString(R.string.crime_photo_no_image_description)
+    }
+}
+```
+
+### 18.4 深入学习：使用辅助功能扫描器
+
+Google提供了一个辅助功能扫描器，它能评估应用在辅助功能方面做得如何并给出改进意见
+
+### 18.5 挑战练习：优化列表项（待）
+
+### 18.6 挑战练习：补全上下文信息（待）
+
+```xml
+<TextView
+    android:id="@+id/crime_date_label"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:text="Date"
+    android:labelFor="@+id/crime_date"/>
+<Button
+    android:id="@+id/crime_date"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    tools:text="Wed Nov 14 11:56 EST 2018"/>
+```
+
+### 18.7 挑战练习：事件主动通知（待）
+
+## 第19章 数据绑定与MVVM
+
+### 19.1 为何要用MVVM架构
+
+MVVM架构很好地把控制器里的臃肿代码抽到布局文件里，让开发人员很容易看出哪些是动态界面。同时，它也抽出部分动态控制器代码放入视图模型类。这样一来，测试和验证更容易了
+
+### 19.2 MVVM View Model与Jetpack ViewModel
+
+Jetpack ViewModel是一个特殊的功能类，可以用来管理和保留fragment和activity（在它们的生命周期状态发生变化时）里的数据。而MVVM里的视图模型是架构方面的一种概念。视图模型当然可以使用Jetpack ViewModel类来实现，但学完本章你就会知道，不使用ViewModel类也可以
+
+### 19.3 创建BeatBox应用
+
+### 19.4 实现简单的数据绑定
+
+```kotlin
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    // 安装kapt插件
+    kotlin("kapt")
+}
+
+android {
+    // ...
+    buildTypes {
+        // ...
+    }
+    dataBinding {
+        enable = true
+    }
+    // ...
+}
+```
+
+### 19.5 导入assets
+
+使用assets有两面性，优缺点并存：一方面，无须配置系统管理，可以随意命名assets，并按自己的文件结构组织它们；另一方面，没有配置系统管理，无法自动响应屏幕显示密度、语言这样的设备配置变更，自然也就无法在布局或其他资源里自动使用它们了
+
+assets目录中的所有文件都会随应用打包
+
+### 19.6 处理assets
+
+### 19.7 使用assets
+
+### 19.8 数据绑定
+
+#### 19.8.1 创建视图模型
+
+#### 19.8.2 绑定至视图模型
+
+#### 19.8.3 绑定数据观察
+
+### 19.9 深入学习：数据绑定再探
+

@@ -40,3 +40,9 @@ pick c
 [来源链接2](https://www.jianshu.com/p/4a8f4af4e803)
 
 如果之前的commit已经提交过远端，在rebase后，要再次提交，此时需要使用`git push --force`
+
+## 关于撤消rebase
+
+1. 通过`git reflog`查看本地记录，找到rebase之前的id
+2. 然后`git reset --hard ${id}`即可
+
