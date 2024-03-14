@@ -1,5 +1,15 @@
 # chrome使用
 
+## 离线安装包获取
+
+https://www.google.com/intl/zh-CN/chrome/next-steps.html?platform=win64&standalone=1
+
+参数中的standalone=1表示离线安装包，platform表示适用平台，这里为win64，则表示64位windows系统平台，如果替换为mac则为mac系统适用的版本，一般仅当你是mac电脑但又要下载windows版本时才需要这个参数
+
+## 启动参数说明：
+
+- `--disable-web-security`：禁用浏览器的安全策略，这样可以自由进行跨域请求
+
 ## 关于headless检查方式
 
 ```bash

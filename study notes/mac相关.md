@@ -77,5 +77,17 @@ ulimit -c unlimited
 - 包括在在程序运行过程中保存并生成`core dump`的方法`lldb --attach-pid ${pid} -b -o 'process save-core "core.${pid}"'`
 - 包括如何使用`llnode`来调试`core dump`
 
+## Alfred
 
+关于搜索不到文件时可以尝试重建索引：
+
+```bash
+/Applications/Alfred\ 5.app/Contents/Frameworks/Alfred\ Framework.framework/Versions/A/Resources/reindexdel.sh
+```
+
+通过`Spolight`可以看到索引重建的进度
+
+<img src="../media/image-20240206153328167.png" alt="image-20240206153328167" />
+
+索引重建这后可以在`alfred`中输入`reload`并找到`reload alfred cache`然后执行
 
