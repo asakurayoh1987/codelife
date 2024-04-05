@@ -174,8 +174,6 @@ done
 node app.js | awk '{print $5}' | sort | uniq -c | sort -r | head -n20 | awk '{print $2}' | fx -r 'fetch(`http://ip-api.com/json/${x}`)' '.json()' '({query,country,city})=>({ip:query,country,city})'
 ```
 
-
-
 ```bash
 # 白金会员 fx '({retcode,url})=>({retcode, url})'
 cat songs_m.json | jq -r '.[].id' | fx -r 'fetch(`http://client.diyring.cc/h5res/q_ring_audition?pi=002&an=HGG001&v=1.0.00&cn=5223&btp=1&lcc=CN&lp=%E5%AE%89%E5%BE%BD&lc3%E6%96%AF%E5%8F%B0%E9%9F%B3%E5%B8%83%E6%8B%89%E6%A0%BC&contentid=${x}&type=2&phone=18256922923&chargeid=10150005&di=b40d531e3722421d842cd08115a1d376&tc=b40d531e3722421d842cd08115a1d376`)' '.json()' | fx '.retcode'
@@ -208,6 +206,10 @@ END {
         print s ": " count[s];
     }
 }' urls.txt
+```
+
+```bash
+cat 12921_2024_03_27.csv | tail -n +2 | grep -oE 'phone=\d{11}' | awk -F= '{print $2}' | sort | uniq -c | sort -r | head -n100
 ```
 
 

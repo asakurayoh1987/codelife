@@ -1,5 +1,5 @@
 
-# ###Rust程序设计（第2版）
+# Rust程序设计（第2版）
 
 ## 第1章 系统程序员也能享受美好
 
@@ -1589,5 +1589,2310 @@ Rust 会获取**文档型注释中出现的每个代码块**，然后将其编�
 
 ### 8.10 更多好资源
 
+## 第9章 结构体
 
+Rust 有 3 种结构体类型：
+
+1. 具名字段型结构体：具名字段型结构体会为每个组件命名；
+2. 元组型结构体：元组型结构体会按组件出现的顺序标识它们
+3. 单元型结构体：单元型结构体则根本没有组件，但却比你想像的更有用
+
+### 9.1 具名字段型结构体
+
+Rust中约定，所有类型（包括结构体）的名称都使用**大驼峰格式**，而字段和方法均小写，单词之间用下划线分隔，即**蛇形格式**
+
+创建具名字段结构体的值时，可以使用另一个相同类型的结构体为省略的那些字段提供值。在结构体表达式中，如果具名字段后面跟着 `.. EXPR`，则任何未提及的字段都会从 EXPR（必须是相同结构体类型的另一个值）中获取它们的值
+
+### 9.2 元组型结构体
+
+类似如下形式
+
+```rust
+struct Bounds(usize, usize);
+```
+
+元组型结构体适用于创造新类型（newtype），即建立一个只包含单组件的结构体，以获得更严格的类型检查
+
+```rust
+struct Ascii(Vec<u8>);
+```
+
+### 9.3 单元型结构体
+
+如下面这种没有元素的结构体
+
+```rust
+struct Onesuch;
+```
+
+这种类型的值不占用内存，很像单元类型 ()。Rust 既不会在内存中实际存储单元型结构体的值，也不会生成代码来对它们进行操作，因为仅通过值的类型它就能知道关于值的所有信息
+
+### 9.4 结构体布局
+
+Rust 承诺会将字段的值**直接存储在结构体本身的内存块中**，这与C/C++不同，它们会将字段的值分别存放在它们自己的分配在堆上的块中，并用指针指向它们
+
+你可以使用`#[repr(C)]` 属性要求 Rust 以兼容 C 和 C++ 的方式对结构体进行布局
+
+### 9.5 用impl定义方法
+
+在 impl 块中定义的函数称为**关联函数**，Rust 会将调用关联函数的结构体值作为**第一个参数**传给方法，该参数必须具有特殊名称 `self`
+
+#### 9.5.1 以Box、Rc或Arc形式传入self
+
+对于方法调用和字段访问，Rust 会**自动**从 Box、Rc、Arc 等指针类型中**借入引用**，因此 `&self` 和 `&mut self` 几乎总是（偶尔也会用一下 `self`）方法签名里的正确选择
+
+#### 9.5.2 类型关联函数
+
+给定类型的 impl 块还可以定义根本不以 `self` 为参数的函数。这些函数仍然是关联函数，因为它们在 impl 块中，但它们不是方法，因为它们不接受 `self` 参数。为了将它们与方法区分开来，我们称其为**类型关联函数**
+
+### 9.6 关联常量
+
+该值是与类型而不是类型的特定实例关系起来的
+
+```rust
+pub struct Vector2 {
+    x: f32,
+    y: f32,
+}
+
+impl Vector2 {
+    const ZERO: Vector2 = Vector2 { x: 0.0, y: 0.0 };
+    const UNIT: Vector2 = Vector2 { x: 1.0, y: 0.0 };
+}
+
+let scaled = Vector2::UNIT.scaled_by(2.0);
+```
+
+关联常量的类型**不必是其所关联的类型**，我们可以使用此特性为类型添加 ID 或名称
+
+### 9.7 泛型结构体
+
+泛型结构体的`impl`块中，既可以如下面这种，声明任意类型参数
+
+```rust
+impl<T> Queue<T> {
+  ...
+}
+```
+
+也可以专为某种特定类型的Queue编写
+
+```rust
+impl Queue<f64> {
+  ...
+}
+```
+
+作为另一种简写形式，每个 impl 块，无论是不是泛型，都会将特殊类型的参数 `Self`（注意这里是**大驼峰 CamelCase**）定义为我们要为其添加方法的任意类型
+
+```rust
+pub fn new() -> Self {
+  Queue { older: Vec::new(), younger: Vec::new() }
+}
+```
+
+### 9.8 带有生命周期参数的泛型结构体
+
+Rust 总会为各种调用推断其生命周期参数
+
+### 9.9 带常量参数的泛型结构体
+
+```rust
+/// N - 1次多项式
+struct Polynomial<const N: usize> {
+    /// 多项式的系数
+    ///
+    /// 对于多项式a + bx + cx2 + ... + zxn-1，其第`i`个元素是xi的系数
+    coefficients: [f64; N]
+}
+
+impl<const N: usize> Polynomial<N> {
+    fn new(coefficients: [f64; N]) -> Polynomial<N> {
+        Polynomial { coefficients }
+    }
+
+    /// 计算`x`处的多项式的值
+    fn eval(&self, x: f64) -> f64 {
+        // 秦九韶算法在数值计算上稳定、高效且简单：
+        // c0 + x(c1 + x(c2 + x(c3 + ... x(c[n-1] + x c[n]))))
+        let mut sum = 0.0;
+        for i in (0..N).rev() {
+            sum = self.coefficients[i] + x * sum;
+        }
+
+        sum
+    }
+}
+```
+
+上段代码中的`N`不是一个常量参数
+
+Rust 通常也能为常量参数**推断**出正确的值
+
+常量泛型参数**可以**是任意整数类型、char 或 bool。**不允许**使用浮点数、枚举和其他类型
+
+如果结构体还接受其他种类的泛型参数，则**生命周期参数必须排在第一位，然后是类型，接下来是任何 const 值**：
+
+```rust
+struct LumpOfReferences<'a, T, const N: usize> {
+    the_lump: [&'a T; N]
+}
+```
+
+如果要为 const 泛型参数提供的值**不仅仅是字面量或单个标识符**，那么就**必须将其括在花括号中**，就像 Polynomial<{5 +1}> 这样。此规则能让 Rust 更准确地报告语法错误
+
+### 9.10 让结构体类型派生自某些公共trait
+
+```rust
+#[derive(Copy, Clone, Debug, PartialEq)]
+struct Point {
+    x: f64,
+    y: f64
+}
+```
+
+### 9.11 内部可变性
+
+所有用于写入的方法都需要一个**可变引用**
+
+我们需要一个不可变值中的一丁点可变数据，这就是**内部可变性**，Rust提供了多种方案，这里只讨论两种最直观的类型：`Cell<T>`和`RefCell<T>`
+
+#### `Cell<T>`
+
+`Cell<T>` 是一个包含类型 T 的单个私有值的结构体。Cell 唯一的特殊之处在于，**即使你对 Cell 本身没有 mut 访问权限，也可以获取和设置这个私有值字段**
+
+需要注意的是，Cell实例的`set`方法签名为`fn set(&self, value: T)`，注意这里不是`&mut self`
+
+Cell**不允许**在共享值上调用 mut 方法。.get() 方法会返回 Cell 中值的副本，因此它仅在 T 实现了 Copy 特型时才有效
+
+#### `RefCell<T>`
+
+与Cell 不同，RefCell 支持**借用对其 T 值的引用**
+
+- `ref_cell.borrow()` 借用，返回一个`Ref<T>`，它本质上只是对存储在ref_cell中值的共享引用
+- `ref_cell.borrow_mut()` 可变借用，返回一个`RefMut<T>`，它本质上是对ref_cell中值的可变引用
+- `ref_cell.try_borrow()`与`ref_cell.try_borrow_mut()`，与上述两个方法行为一致，只不过返回的是一个`Result`
+
+通常情况下，当你借用一个变量的引用时，Rust 会在编译期进行检查，以确保你在安全地使用该引用。如果检查失败，则会出现编译错误。RefCell会使用**运行期检查强制执行相同的规则**。因此，如果你违反了规则，就会收到 panic（对于 try_borrow 和 try_borrow_mut则会显示 Err）
+
+Cell以及包含它的任意类型都**不是线程安全的**，因此 Rust **不允许**多个线程同时访问它们
+
+## 第10章 枚举与模式
+
+Rust 枚举还可以包含数据，甚至是不同类型的数据，Rust 枚举更像是 C 的联合体，但不同之处在于它是类型安全的
+
+### 10.1 枚举
+
+##### C风格枚举
+
+要导入当前模块中声明的枚举的构造器，需要使用`self`：
+
+```rust
+enum Pet {
+    Orca,
+    Giraffe,
+    ...
+}
+
+use self::Pet::*;
+```
+
+C风格的枚举，可以将枚举转成整数，但反之则不行
+
+#### 10.1.1 带数据的枚举
+
+##### 元组型变体
+
+```rust
+/// 刻意四舍五入后的时间戳，所以程序会显示“6个月前”
+/// 而非“2016年2月9日上午9点49分”
+#[derive(Copy, Clone, Debug, PartialEq)]
+enum RoughTime {
+    InThePast(TimeUnit, u32),
+    JustNow,
+    InTheFuture(TimeUnit, u32),
+}
+
+let four_score_and_seven_years_ago =
+    RoughTime::InThePast(TimeUnit::Years, 4 * 20 + 7);
+
+let three_hours_from_now =
+    RoughTime::InTheFuture(TimeUnit::Hours, 3);
+```
+
+##### 结构体型变体
+
+```rust
+enum Shape {
+  Sphere { center: Point3d, radius: f32 },
+  Cuboid { corner1: Point3d, corner2: Point3d },
+}
+
+let unit_sphere = Shape::Sphere {
+  center: ORIGIN,
+  radius: 1.0,
+}
+```
+
+枚举的所有构造器和字段都与枚举本身具有相同的可见性
+
+#### 10.1.2 内存中的枚举
+
+在内存中，带有数据的枚举会以一个**小型整数标签**加上**足以容纳最大变体中所有字段的内存块的格式**进行存储
+
+以前面提到的`RoughTime`为例，其内存中的结构如下：
+
+<img src="../media/image-20240317144859275.png" alt="image-20240317144859275" style="zoom:50%;" />
+
+不过，为了给将来的优化留下余地，**Rust 并没有对枚举的内存布局做出任何承诺**
+
+#### 10.1.3 用枚举表示富数据结构
+
+```rust
+use std::collections::HashMap;
+
+enum Json {
+    Null,
+    Boolean(bool),
+    Number(f64),
+    String(String),
+    Array(Vec<Json>),
+    Object(Box<HashMap<String, Json>>),
+}
+```
+
+内存结构：
+
+![image-20240317150019694](../media/image-20240317150019694.png)
+
+String 值和 Vec 值占用 3 个机器字，Rust 又添加了**一个标签字节**
+
+Box`<HashMap>` 只有 1个机器字：**它只是指向堆中分配的数据的指针**
+
+#### 10.1.4 泛型枚举
+
+如标准库中的`Option`与`Result`
+
+```rust
+enum Option<T> {
+    None,
+    Some(T),
+}
+
+enum Result<T, E> {
+    Ok(T),
+    Err(E),
+}
+```
+
+当类型 T 是引用、Box 或其他智能指针类型时，Rust 可以省掉 `Option<T>` 的**标签字段**。由于这些指针类型都不允许为 0，因此 Rust 可以将 `Option<Box<i32>>` 表示为单个机器字：0 表示 None，非零表示 Some 指针
+
+### 10.2 模式
+
+直观的示例：
+
+```rust
+enum RoughTime {
+    InThePast(TimeUnit, u32),
+    JustNow,
+    InTheFuture(TimeUnit, u32),
+}
+
+fn rough_time_to_english(rt: RoughTime) -> String {
+    match rt {
+      	// 箭头前面的这部分就是模式
+        RoughTime::InThePast(units, count) =>
+            format!("{} {} ago", count, units.plural()),
+        RoughTime::JustNow =>
+            format!("just now"),
+        RoughTime::InTheFuture(units, count) =>
+            format!("{} {} from now", count, units.plural()),
+    }
+}
+```
+
+#### 10.2.1 模式中的字面量、变量和通配符
+
+使用`_`表示通配符模式：
+
+```rust
+let caption = match photo.tagged_pet() {
+    Pet::Tyrannosaur => "RRRAAAAAHHHHHH",
+    Pet::Samoyed => "*dog thoughts*",
+    _ => "I'm cute, love me", // 一般性捕获，对任意Pet都生效
+};
+```
+
+由于 Rust 要求每个 match 表达式都**必须处理所有可能的值**，因此最后往往需要一个通配符模式
+
+#### 10.2.2 元组型模式与结构体型模式
+
+对于结构型模式，如果我们只关心几个字段时，可以使用`..`符来告诉Rust你不关心其他任何字段：
+
+```rust
+// 只关心Account中的name与language字段
+Some(Account { name, language, .. }) =>
+    language.show_custom_greeting(name),
+```
+
+#### 10.2.3 数组型模式与切片型模式
+
+`..` 在切片型模式中能匹配任意数量的元素
+
+#### 10.2.4 引用型模式
+
+Rust 模式提供了两种特性来支持引用。`ref` 模式会**借用**已匹配值的一部分。`&` 模式会**匹配引用**
+
+```rust
+match account {
+  	// 这里是借用
+    Account { ref name, ref language, .. } => {
+        ui.greet(name, language);
+        ui.show_settings(&account);  // 正确，这里的account还存在
+    }
+}
+```
+
+匹配引用时会遵循我们所期望的一切规则。生命周期规则仍然有效。你不能通过共享引用获得可变访问权限，而且不能将值从引用中移动出去，即使对可变引用也是如此
+
+```rust
+// chars.peek()会返回一个Option<&ItemType>
+match chars.peek() {
+    Some(&c) => println!("coming up: {:?}", c),
+    None => println!("end of chars"),
+}
+```
+
+#### 10.2.5 匹配守卫
+
+```rust
+match point_to_hex(click) {
+    None => Err("That's not a game space."),
+    Some(hex) if hex == current_hex =>
+        Err("You are already there! You must click somewhere else"),
+    Some(hex) => Ok(hex)
+}
+```
+
+#### 10.2.6 匹配多种可能性
+
+```rust
+match next_char {
+    '0'..='9' => self.read_number(),
+    'a'..='z' | 'A'..='Z' => self.read_word(),
+    ' ' | '\t' | '\n' => self.skip_whitespace(),
+    _ => self.handle_punctuation(),
+}
+```
+
+Rust 中还允许使用像 x.. 这样的范围型模式，该模式会匹配从 x 到其类型最大值的任何值。但是，目前模式中还不允许使用其他的开区间范围（如 `0..100` 或`..100`）以及无限范围（如`..`）
+
+#### 10.2.7 使用@模式绑定
+
+最后，`x @ pattern` 会与给定的 pattern 精确匹配，但成功时，它不会为匹配到的值的各个部分创建变量，而是会创建单个变量 `x` 并将整个值移动或复制到其中
+
+```rust
+match self.get_selection() {
+    Shape::Rect(top_left, bottom_right) => {
+        optimized_paint(&Shape::Rect(top_left, bottom_right))
+    }
+    other_shape => {
+        paint_outline(other_shape.get_outline())
+    }
+}
+```
+
+可以简化为：
+
+```rust
+rect @ Shape::Rect(..) => {
+    optimized_paint(&rect)
+}
+```
+
+#### 10.2.8 模式能用在哪里
+
+```rust
+// 把结构体解包成3个局部变量……
+let Track { album, track_number, title, .. } = song;
+
+// ……解包某个作为函数参数传入的元组
+fn distance_to((x, y): (f64, f64)) -> f64 { ... }
+
+// ……迭代某个HashMap上的键和值
+for (id, document) in &cache_map {
+    println!("Document #{}: {}", id, document.title);
+}
+
+// ……自动对闭包参数解引用（当其他代码给你传入引用，
+// 而你更想要一个副本时会很有用）
+let sum = numbers.fold(0, |a, &num| a + num);
+
+// ……处理只有一个枚举值的特例
+if let RoughTime::InTheFuture(_, _) = user.date_of_birth() {
+    user.set_time_traveler(true);
+}
+
+// ……只有当查表成功时才运行某些代码
+if let Some(document) = cache_map.get(&id) {
+    return send_cached_response(document);
+}
+
+// ……重复尝试某些事，直到成功
+while let Err(err) = present_cheesy_anti_robot_task() {
+    log_robot_attempt(err);
+    // 让用户再试一次（此用户仍然可能是人类）
+}
+
+// ……在某个迭代器上手动循环
+while let Some(_) = lines.peek() {
+    read_paragraph(&mut lines);
+}
+```
+
+#### 10.2.9 填充二叉树
+
+```rust
+// `T`的有序集合
+enum BinaryTree<T> {
+    Empty,
+    NonEmpty(Box<TreeNode<T>>),
+}
+
+// BinaryTree的部件
+struct TreeNode<T> {
+    element: T,
+    left: BinaryTree<T>,
+    right: BinaryTree<T>,
+}
+
+impl<T: Ord> BinaryTree<T> {
+    fn add(&mut self, value: T) {
+        match *self {
+            BinaryTree::Empty => {
+                *self = BinaryTree::NonEmpty(Box::new(TreeNode {
+                    element: value,
+                    left: BinaryTree::Empty,
+                    right: BinaryTree::Empty,
+                }))
+            }
+            BinaryTree::NonEmpty(ref mut node) => {
+                if value <= node.element {
+                    node.left.add(value);
+                } else {
+                    node.right.add(value);
+                }
+            }
+        }
+    }
+}
+```
+
+### 10.3 大局观
+
+## 第11章 特型（trait）与泛型
+
+特型类似于Java或C#中的接口，而泛型则与C++中的模板类似
+
+### 11.1 使用特型
+
+特型本身**必须在作用域内**，否则它的所有方法都是不可见的，比如下面的代码，如果将模块引入的use语句去掉，则会编译错误
+
+```rust
+use std::io::Write;
+
+let mut buf: Vec<u8> = vec![];
+buf.write_all(b"hello")?;
+```
+
+而像Clone 和 Iterator 的各个方法在没有任何特殊导入的情况下就能工作，因为默认情况下它们始终在作用域中：它们是**标准库预导入**的一部分，Rust 会把这些名称自动导入每个模块中
+
+#### 11.1.1 特型对象
+
+对特型类型的引用叫作**特型对象**，也就是说它是一个引用，与其他任何引用一样，指向某个值，具有生命周期，可以是共享的或可变的
+
+**Rust 通常无法在编译期间知道引用目标的类型**，因此特型对象要包含一些关于引用目标类型的**额外信息**（它是一个**胖指针**），因为每个特型对象会**占用两个机器字**
+
+##### 特型对象的内存布局
+
+由**指向值的指针**和**指向表示该值类型的虚表的指针**组成。虚表只会在编译期生成一次，并由同一类型的所有对象共享
+
+![image-20240318220257435](../media/image-20240318220257435.png)
+
+#### 11.1.2 泛型函数与类型参数
+
+```rust
+fn say_hello(out: &mut dyn Write)     // 普通函数
+
+fn say_hello<W: Write>(out: &mut W)   // 泛型函数
+```
+
+#### 11.1.3 使用哪一个
+
+当你需要一些混合类型值的集合时，特型对象是正确的选择，第二个就是考虑资源占用，因为Rust中对于泛型函数，是针对用了它的每种类型都编译一次，所以可能会使二进制文件变大
+
+而对于泛型，它有3个重要的优势：
+
+1. 速度快，在编译期指定类型，生成对应的机器码
+2. 并不是每个特型都能支持特型对象，特型支持的几个特性（如关联函数）只适用于泛型
+3. 很容易同时指定具有多个特型的泛型参数限界（通过`+`号）
+
+### 11.2 定义与实现特型
+
+#### 11.2.1 默认方法
+
+自定义特型中可以包括方法的默认实现
+
+#### 11.2.2 特型与其他人的类型
+
+Rust 允许在任意类型上实现任意特型，**但特型或类型二者必须至少有一个是在当前 crate 中新建的——孤儿规则**
+
+也就是说可以通过特型来为任意类型添加方法，这称为**扩展特型**，甚至可以为整个类型家族添加扩展特型，如：
+
+```rust
+use std::io::{self, Write};
+
+/// 能让你把HTML写入值里的特型
+trait WriteHtml {
+    fn write_html(&mut self, html: &HtmlDocument) -> io::Result<()>;
+}
+
+// 为整个Write类型添加扩展
+impl<W: Write> WriteHtml for W {
+  	fn write_html(&mut self, html: &HtmlDocument) -> io::Result<()> {
+      	...
+  	}
+}
+```
+
+#### 11.2.3 特型中的Self
+
+用于如下场景：
+
+```rust
+pub trait Spliceable {
+    fn splice(&self, other: &Self) -> Self;
+}
+
+// 这里的Self为CherryTree
+impl Spliceable for CherryTree {
+    fn splice(&self, other: &Self) -> Self {
+        ...
+    }
+}
+
+// 这里的Self为Mammoth
+impl Spliceable for Mammoth {
+    fn splice(&self, other: &Self) -> Self {
+        ...
+    }
+}
+```
+
+使用了 Self 类型的特型与特型对象**不兼容**，因为Rust无法进行类型检查，因为特型对象的类型只有到运行期才能知道
+
+#### 11.2.4 子特型
+
+类似于Java中的接口继承，但在Rust中，如果只实现**子特型**，而不实现**超特型**，则会报错。同时子特型**不会继承**其超特型的关联项，如果你想调用超特型的方法，那么仍然要保证每个特型都在作用域内
+
+#### 11.2.5 类型关联函数
+
+特型可以包含类型关联函数
+
+```rust
+trait StringSet {
+    /// 返回一个新建的空集合
+    fn new() -> Self;
+
+    /// 返回一个包含`strings`中所有字符串的集合
+    fn from_slice(strings: &[&str]) -> Self;
+
+    /// 判断这个集合中是否包含特定的`string`
+    fn contains(&self, string: &str) -> bool;
+
+    /// 把一个字符串添加到此集合中
+    fn add(&mut self, string: &str);
+}
+```
+
+但特型对象不支持类型关联函数，如果需要支持特型对象，则必须修改特型，为每个未通过引用接受self参数的关联函数加上类型限界：`where Self: Sized`
+
+```rust
+trait StringSet {
+    fn new() -> Self
+        where Self: Sized;
+
+    fn from_slice(strings: &[&str]) -> Self
+        where Self: Sized;
+
+    fn contains(&self, string: &str) -> bool;
+
+    fn add(&mut self, string: &str);
+}
+```
+
+**后文会介绍Sized特型**
+
+### 11.3 完全限定的方法调用
+
+```rust
+// 限定的方法调用
+"hello".to_string()
+str::to_string("hello")
+ToString::to_string("hello")
+
+// 完全限定的方法调用
+<str as ToString>::to_string("hello")
+```
+
+### 11.4 定义类型之间关系的特型
+
+#### 11.4.1 关联类型（或迭代器的工作原理）
+
+Rust中的一个标准`Iterator`特型：
+
+```rust
+pub trait Iterator {
+  	// 这称为关联类型
+    type Item;
+
+  	// 返回关联类型，必须写成`Self::Item`
+    fn next(&mut self) -> Option<Self::Item>;
+    ...
+}
+
+// 一个类型实现Iterator的范例
+//（来自标准库中std::env模块的代码）
+impl Iterator for Args {
+    type Item = String;
+
+    fn next(&mut self) -> Option<String> {
+        ...
+    }
+    ...
+}
+```
+
+可以通过以下两种写法来限界特型
+
+```rust
+use std::fmt::Debug;
+
+// 第一种，通过where子句
+fn dump<I>(iter: I)
+    where I: Iterator, I::Item: Debug
+{
+    ...
+}
+
+// 第二种
+fn dump<I>(iter: I)
+    where I: Iterator<Item=String>
+{
+    ...
+}
+```
+
+#### 11.4.2 泛型特型（或运算符重载的工作原理）
+
+```rust
+/// std::ops::Mul，用于标记支持`*`（乘号）的类型的特型
+pub trait Mul<RHS> {
+    /// 在应用了`*`运算符后的结果类型
+    type Output;
+
+    /// 实现`*`运算符的方法
+    fn mul(self, rhs: RHS) -> Self::Output;
+}
+```
+
+上面就是Rust中用于乘法的泛型特型，类型参数RHS是右操作数的缩写
+
+**泛型特型在涉及孤儿规则时会得到特殊豁免**：你可以为外部类型实现外部特型，只要特型的类型参数之一是当前 crate 中定义的类型即可
+
+在 Rust 中，表达式 `lhs * rhs` 是 `Mul::mul(lhs, rhs)` 的简写形式。所以在 Rust 中重载 `*` 运算符就像实现 Mul 特型一样简单。第 12 章会展示相关示例
+
+#### 11.4.3 impl Trait
+
+Rust 有一个名为 impl Trait 的特性，impl Trait 允许我们“擦除”返回值的类型，仅指定它实现的一个或多个特型，而无须进行动态派发或堆分配
+
+```rust
+use std::iter;
+use std::vec::IntoIter;
+fn cyclical_zip(v: Vec<u8>, u: Vec<u8>) ->
+    iter::Cycle<iter::Chain<IntoIter<u8>, IntoIter<u8>>> {
+        v.into_iter().chain(u.into_iter()).cycle()
+}
+```
+
+简写成如下形式，其返回类型表达了函数的意图，而非实现细节
+
+```rust
+fn cyclical_zip(v: Vec<u8>, u: Vec<u8>) -> impl Iterator<Item=u8> {
+    v.into_iter().chain(u.into_iter()).cycle()
+}
+```
+
+将来如果更改返回的实际类型，只要返回类型仍然会实现 `Iterator<Item=u8>`，调用该函数的任何代码就能继续编译而不会出现问题
+
+impl Trait 是一种**静态派发形式**，因此**编译器必须在编译期就知道从函数返回的类型**，以便在栈上分配正确的空间数量并正确访问该类型的字段和方法
+
+使用泛型时允许函数的调用者指定泛型参数的类型，比如`print::<i32>(42)`，**如果使用 impl Trait 则不能这样做**
+
+#### 11.4.4 关联常量
+
+关联常量不能与特型对象一起使用，因为为了在编译期选择正确的值，编译器会依赖相关实现的类型信息
+
+```rust
+// 定义关联常量
+trait Float {
+    const ZERO: Self;
+    const ONE: Self;
+}
+
+// 具体实现
+impl Float for f32 {
+    const ZERO: f32 = 0.0;
+    const ONE: f32 = 1.0;
+}
+
+impl Float for f64 {
+    const ZERO: f64 = 0.0;
+    const ONE: f64 = 1.0;
+}
+
+// 实现一个斐波那契数列函数
+fn fib<T: Float + Add<Output=T>>(n: usize) -> T {
+    match n {
+        0 => T::ZERO,
+        1 => T::ONE,
+        n => fib::<T>(n - 1) + fib::<T>(n - 2)
+    }
+}
+```
+
+### 11.5 逆向工程求限界
+
+指的是通过编译器的报错来逆向调整代码中关于类似限界的设定，最终通过编译
+
+就像下面的函数中的众多限界条件
+
+```rust
+use std::ops::{Add, Mul};
+
+fn dot<N>(v1: &[N], v2: &[N]) -> N
+where
+    N: Add<Output = N> + Mul<Output = N> + Default + Copy,
+{
+    let mut total = N::default();
+    for i in 0..v1.len() {
+        total = total + v1[i] * v2[i];
+    }
+    total
+}
+
+#[test]
+fn test_dot() {
+    assert_eq!(dot(&[1, 2, 3, 4], &[1, 1, 1, 1]), 10);
+}
+```
+
+### 11.6 以特型为基础
+
+## 第12章 运算符重载
+
+### 12.1 算术运算符与按位运算符
+
+在 Rust 中，表达式 `a + b` 实际上是` a.add(b)` 的简写形式，也就是对标准库中 `std::ops::Add` 特型的 add 方法的调用
+
+#### 12.1.1 一元运算符
+
+请注意，`!` 运算符**会对 bool 值进行取反，而对整数执行按位取反**，它同时扮演着 C 和 C++ 中的 ! 运算符和 ~ 运算符的角色
+
+取负和取反的特型定义如下：
+
+```rust
+trait Neg {
+    type Output;
+    fn neg(self) -> Self::Output;
+}
+
+trait Not {
+    type Output;
+    fn not(self) -> Self::Output;
+}
+```
+
+#### 12.1.2 二元运算符
+
+```rust
+trait BitXor<Rhs = Self> {
+    type Output;
+    fn bitxor(self, rhs: Rhs) -> Self::Output;
+}
+```
+
+#### 12.1.3 复合赋值运算符
+
+```rust
+trait AddAssign<Rhs = Self> {
+    fn add_assign(&mut self, rhs: Rhs);
+}
+```
+
+### 12.2 相等性比较
+
+```rust
+trait PartialEq<Rhs = Self>
+// 注意这里的类型，放宽了 Rust 对类型参数必须有固定大小的常规要求，能让我们写出像PartialEq<str> 或 PartialEq<[T]> 这样的特型
+where
+    Rhs: ?Sized,
+{
+    fn eq(&self, other: &Rhs) -> bool;
+    fn ne(&self, other: &Rhs) -> bool {
+        !self.eq(other)
+    }
+}
+```
+
+相等性是一个常见的支持性操作，所以只要提出要求，Rust 就会自动为你生成一个 PartialEq 的实现。只需把 PartialEq 添加到类型定义的 derive 属性中即可，只要该类型含有（对于 enum 则是所有可能含有）的每个值本身必须实现 PartialEq
+
+PartialEq 会通过**引用**获取其操作数
+
+之所以称为PartialEq（**部分相等**），是因为Rust 的 f32 和 f64 是 IEEE 标准浮点值。根据该标准，像 `0.0/0.0` 和其他没有适当值的表达式必须生成特殊的非数值，通常叫作 `NaN` 值。该标准进一步要求将 **`NaN` 值视为与包括其自身在内的所有其他值都不相等**
+
+### 12.3 有序比较
+
+根据单个特型`std::cmp::PartialOrd`来定义全部的比较运算符的行为
+
+```rust
+trait PartialOrd<Rhs = Self>: PartialEq<Rhs>
+where
+    Rhs: ?Sized,
+{
+    fn partial_cmp(&self, other: &Rhs) -> Option<Ordering>;
+    fn lt(&self, other: &Rhs) -> bool { ... }
+    fn le(&self, other: &Rhs) -> bool { ... }
+    fn gt(&self, other: &Rhs) -> bool { ... }
+    fn ge(&self, other: &Rhs) -> bool { ... }
+}
+```
+
+PartialOrd 中必须自行实现的唯一方法是 `partial_cmp`。当 `partial_cmp`返回` Some(o)` 时，`o` 应该指出 `self` 与 `other` 之间的关系
+
+```rust
+enum Ordering {
+    Less,       // self < other
+    Equal,      // self == other
+    Greater,    // self > other
+}
+```
+
+### 12.4 Index 与 IndexMut
+
+通过实现 `std::ops::Index` 特型和 `std::ops::IndexMut` 特型，你可以规定像 `a[i]` 这样的索引表达式该如何作用于你的类型
+
+数组可以直接支持`[]` 运算符，但对其他类型来说，**表达式 `a[i]` 通常是`*a.index(i)` 的简写形式**，其中 `index` 是 `std::ops::Index` 特型的方法
+
+### 12.5 其他运算符
+
+解引用运算符 `*val` 和用于访问字段和调用方法的点运算符（如 `val.field` 和`val.method()`）可以用 Deref 特型和 DerefMut 特型进行重载
+
+Rust 不支持重载函数调用运算符 `f(x)`
+
+## 第13章 实用工具特型（重新阅读）
+
+Rust实用工具特型分为三大类：
+
+1. 语言扩展特型
+2. 标记特型
+3. 公共词汇特型
+
+|          特型           |                             描述                             |
+| :---------------------: | :----------------------------------------------------------: |
+|         `Drop`          |    析构器。每当丢弃一个值时，Rust 都要自动运行的清理代码     |
+|         `Sized`         | 具有在编译期已知的固定大小类型的标记特型，与之相对的是动态大小类型（如切片） |
+|         `Clone`         |                     用来支持克隆值的类型                     |
+|         `Copy`          | 可以简单地通过对包含值的内存进行逐字节复制以进行克隆的类型的标记特型 |
+|  `Deref` 与 `DerefMut`  |                      智能指针类型的特型                      |
+|        `Default`        |                    具有合理“默认值”的类型                    |
+|   `AsRef` 与 `AsMut`    |         用于从另一种类型中借入一种引用类型的转换特型         |
+| `Borrow` 与 `BorrowMut` | 转换特型，类似 `AsRef`/`AsMut`，但能额外保证一致的哈希、排序和相等性 |
+|    `From` 与 `Into`     |         用于将一种类型的值转换为另一种类型的转换特型         |
+| `TryFrom` 与 `TryInto`  | 用于将一种类型的值转换为另一种类型的转换特型，用于可能失败的转换 |
+|        `ToOwned`        |              用于将引用转换为拥有型值的转换特型              |
+
+### 13.1 Drop
+
+Drop 的实现类似于 C++ 中的析构函数或其他语言中的终结器。当一个值被丢弃时，如果它实现了 `std::ops::Drop`，那么 Rust 就会调用它的 drop 方法，然后像往常一样继续丢弃它的字段或元素拥有的任何值
+
+除非正在定义某个拥有 Rust 不了解的资源类型，通常我们不需要自己实现`std::ops::Drop`
+
+**如果一个类型实现了 Drop，就不能再实现 Copy 特型了**
+
+### 13.2 Sized
+
+**固定大小类型**是指其每个值在内存中都有相同大小的类型。Rust 中的几乎所有类型都是固定大小的
+
+所有固定大小类型都实现了 `std::marker::Sized` 特型，该特型没有方法或关联类型。Rust 自动为所有适用的类型实现了 `std::marker::Sized` 特型，**你不能自己实现它**
+
+**`Sized` 的唯一用途是作为类型变量的限界**，像 `T: Sized`这样的限界要求 T 必须是在编译期已知的类型
+
+Rust **不能将无固定大小的值存储在变量中或将它们作为参数传递**。你只能通过像`&str` 或 `Box<dyn Write>` 这样的本身是固定大小的指针来处理它们
+
+结构体类型的**最后一个字段**（而且只能是最后一个）可以是**无固定大小的**，并且这样的结构体本身也是无固定大小的
+
+### 13.3 Clone
+
+`std::clone::Clone` 特型适用于**可复制自身的类型**
+
+克隆一个值通常还需要为它拥有的任何值分配副本，因此 clone 无论在时间消耗还是内存占用方面都是**相当昂贵的**
+
+### 13.4 Copy
+
+不拥有任何资源的简单类型可以是 Copy 类型，对这些简单类型赋值会创建源的副本，而不会移动值并使源回到未初始化状态
+
+ 如果一个类型实现了 `std::marker::Copy` 标记特型，那么它就是 Copy 类型
+
+只有当类型需要一个**浅层的逐字节复制时**，Rust 才允许它实现 Copy
+
+**任何实现了 Drop 特型的类型都不能是 Copy 类型**
+
+与 Clone 一样，可以使用 `#[derive(Copy)]` 让 Rust 为你派生出 Copy 实现
+
+### 13.5 Deref 与 DerefMut
+
+通过实现 `std::ops::Deref` 特型和 `std::ops::DerefMut` 特型，可以指定像 * 和 . 这样的解引用运算符在你的类型上的行为
+
+隐式解引用就是利用这两个特型，比如：如果你有一个 `Rc<String>` 型的值 r，并想对其调用 `String::find`，就可以简单地写成 `r.find('?')`，而不用写成 `(*r).find('?')`
+
+### 13.6 Default
+
+如果类型 T 实现了 Default，那么标准库就会自动为 `Rc<T>、Arc<T>、Box<T>、Cell<T>、RefCell<T>、Cow<T>、Mutex<T> 和 RwLock<T>` 实现 Default
+
+如果一个**元组类型**的所有元素类型都实现了 Default，那么该元组类型也同样会实现 Default，这个元组的默认值包含每个元素的默认值
+
+Rust 不会为**结构体类型隐式实现 Default**，但是如果结构体的所有字段都实现了 Default，**则可以使用 `#[derive(Default)]`为此结构体自动实现 Default**
+
+### 13.7 AsRef 与 AsMut
+
+如果一个类型实现了 `AsRef<T>`，那么就意味着你可以高效地从中借入 `&T`。`AsMut` 是 AsRef 针对可变引用的对应类型
+
+AsRef 通常用于让函数**更灵活地接受其参数类型**
+
+### 13.8 Borrow 与 BorrowMut
+
+`std::borrow::Borrow` 特型类似于 `AsRef`：如果一个类型实现了`Borrow<T>`，那么它的 borrow 方法就能高效地从自身借入一个 `&T`。但是Borrow 施加了更多限制：只有当 `&T` 能通过与它借来的值相同的方式进行哈希和比较时，此类型才应实现 `Borrow<T>`
+
+### 13.9 From 与 Into
+
+`std::convert::From` 特型和 `std::convert::Into` 特型表示类型转换，**这种转换会接受一种类型的值并返回另一种类型的值**。AsRef 特型和 AsMut 特型用于从一种类型借入另一种类型的引用，而 From 和 Into **会获取其参数的所有权**，对其进行转换，然后将转换结果的所有权返回给调用者
+
+`from` 方法会充当泛型构造函数，用于从另一个值生成本类型的实例
+
+**给定适当的 From 实现，标准库会自动实现相应的 Into 特型**
+
+### 13.10 TryFrom 与 TyrInfo
+
+TryFrom 和 TryInto 是 From 和 Into 的容错版“表亲”，这种转换同样是双向的，实现了 TryFrom 也就意味着实现了 TryInto
+
+### 13.11 ToOwned
+
+### 13.12 Borrow 与 ToOwned 的实际运用：谦卑的Cow
+
+Cow——“写入时克隆”，clone on write
+
+## 第14章 闭包
+
+### 14.1 捕获变量
+
+闭包可以使用属于其所在函数的数据
+
+在大多数支持闭包的语言中，垃圾回收扮演着重要角色，比如JavaScript中，闭包所使用的数据在堆中分配并由垃圾回收器回收，但Rust中没有垃圾回发，是如何实现的？
+
+#### 14.1.1 借用值的闭包
+
+```rust
+fn sort_by_statistic(cities: &mut Vec<City>, stat: Statistic) {
+		cities.sort_by_key(|city| -city.get_statistic(stat));
+}
+```
+
+当Rust创建闭包时，会自动**借入**对`stat`的引用，闭包同样遵循第5章中提到的关于借用和生命周期的规则，所以闭包只会在排序期间使用，Rust会使用生命周期而非垃圾回收来确保安全
+
+#### 14.1.2 “窃取”值的闭包
+
+```rust
+use std::thread;
+
+fn start_sorting_thread(mut cities: Vec<City>, stat: Statistic) 
+	-> thread::JoinHandle<Vect<City>>
+{
+	let key_fn = |city: &City| -> i64 {
+  	-city.get_statistic(stat)
+  };
+  
+  thread::spawn(|| {
+    cities.sort_by_key(key_fn);
+    cities
+  })
+}
+```
+
+上面的代码Rust会编译失败，因为此时Rust无法保证引用的安全性，`thread::spawn`创建的新线程无法保证cities和stat被销毁之前在函数末尾完成其工作
+
+解决这个问题，就要使用“移动”的方式，将cities和stat移动到使用它们的闭包中
+
+```rust
+fn start_sorting_thread(mut cities: Vec<City>, stat: Statistic) 
+	-> thread::JoinHandle<Vect<City>>
+{
+  // 注意这里的关键字“move”，表示“移动”，取得stat的所有权
+	let key_fn = move |city: &City| -> i64 {
+  	-city.get_statistic(stat)
+  };
+  
+  // 取得cities和key_fn的所有权
+  thread::spawn(move || {
+    cities.sort_by_key(key_fn);
+    cities
+  })
+}
+```
+
+### 14.2 函数与闭包的类型
+
+闭包与函数**不是**同一种类型，比如：
+
+```rust
+fn(&City) -> bool // fn类型，只接受函数
+Fn(&City) -> bool // Fn特型，既接受函数也接受闭包
+```
+
+因为闭包可以包含数据：从封闭作用域中借用或“窃取”的值，这既可以是任意数量的变量，也可以是任意类型的组合，所以每个闭包都有一个由编译器创建的特殊类型，大到足以容纳这些数据
+
+任何两个闭包的类型都不相同，但每个闭包都会实现Fn特型，也因此使用闭包的代码通常都应该是泛型的
+
+### 14.3 闭包性能
+
+Rust 中闭包的设计目标是要快：比函数指针还要快，快到甚至可以在对性能敏感的热点代码中使用它们
+
+与 Rust 中的其他所有类型一样，除非你将闭包放在 Box、Vec 或其他容器中，否则它们**不会被分配到堆上**
+
+由于每个闭包都有不同的类型，因此 Rust 编译器只要知道你正在调用的闭包的类型，就可以**内联该闭包的代码**
+
+### 14.4 闭包与安全
+
+#### 14.4.1 “杀死”闭包
+
+Rust知道一个闭包不能被drop两次
+
+#### 14.4.2 FnOnce
+
+第一次调用 FnOnce 闭包时，闭包**本身**也会被消耗掉
+
+#### 14.4.3 FnMut
+
+Rust 还有另一类名为 FnMut 的闭包，也就是可写入的闭包。FnMut 闭包会通过可变引用来调用，任何需要对值进行可变访问但不会丢弃任何值的闭包都是 FnMut闭包
+
+<img src="../media/image-20240325220150029.png" alt="image-20240325220150029" style="zoom:50%;" />
+
+#### 14.4.4 对闭包的Copy 与 Clone
+
+一个不修改变量的非 move 闭包只持有共享引用，这些引用既能Clone 也能 Copy，所以闭包也能 Clone 和 Copy
+
+一个会修改值的非 move 闭包在其内部表示中也可以有可变引用。可变引用既不能 Clone，也不能 Copy
+
+如果 move 闭包捕获的所有内容都能 Copy，那它就能 Copy。如果 move 闭包捕获的所有内容都能Clone，那它就能 Clone
+
+### 14.5 回调
+
+闭包具有独特的类型，因为每个闭包会捕获不同的变量，所以和别的语法元素一样，它们各自具有不同的大小。但是，如果闭包没有捕捉到任何东西，那就没有什么要存储的了。通过在接受回调的函数中使用 fn 指针，可以限制调用者仅使用这些非捕获型闭包，以牺牲调用者的灵活性为代价，在接受回调的代码中换取一定的性能和灵活性
+
+### 14.6 高效地使用闭包
+
+简而言之，如果你试图使用 Rust 闭包来应对复杂对象关系，就会遇到困难，但还有其他选择。在这种情况下，软件工程这门学科似乎更倾向于使用替代方案，因为它们更简单
+
+## 第15章 迭代器
+
+### 15.1 Iterator 特型与 IntoIterator 特型
+
+迭代器是实现了 `std::iter::Iterator` 特型的任意值
+
+```rust
+trait Iterator {
+  	// 迭代器所生成的值的类型
+    type Item;
+  	// 返回Some(v)或None
+    fn next(&mut self) -> Option<Self::Item>;
+    …… // 很多默认方法
+}
+```
+
+**Item 是迭代器所生成的值的类型，`next` 方法要么返回 `Some(v)`（其中 v 是迭代器的下一个值），要么返回 `None`（作为序列结束的标志）**
+
+只要可以用某种自然的方式来迭代某种类型，该类型就可以实现`std::iter::IntoIterator`，其 `into_iter` 方法会**接受一个值并返回一个迭代器**
+
+```rust
+trait IntoIterator where Self::IntoIter: Iterator<Item=Self::Item> {
+    type Item;
+    type IntoIter: Iterator;
+    fn into_iter(self) -> Self::IntoIter;
+}
+```
+
+**IntoIter 是迭代器本身的类型，而 Item 是它生成的值的类型**。任何实现了IntoIterator 的类型都称为**可迭代者**
+
+举个例子，下面的for循环
+
+```rust
+let v = vec!["antimony", "arsenic", "aluminum", "selenium"];
+
+for element in &v {
+  println!("{}", element);
+}
+```
+
+等价于下面的形式
+
+```rust
+// 通过into_iter方法拿到可迭代对象的迭代器
+let mut iterator = (&v).into_iter();
+// 不断调用迭代器的next方法获取迭代的值，直到为None
+while let Some(element) = iterator.next() {
+  println("{}", element);
+}
+```
+
+**迭代器**是实现了 **Iterator** 的任意类型。**可迭代者**是任何实现了 **IntoIterator** 的类型
+
+### 15.2 创建迭代器
+
+#### 15.2.1 iter方法与iter_mut方法
+
+```rust
+let v = vec![4, 20, 12, 8, 6];
+let mut iterator = v.iter();
+assert_eq!(iterator.next(), Some(&4));
+assert_eq!(iterator.next(), Some(&20));
+assert_eq!(iterator.next(), Some(&12));
+assert_eq!(iterator.next(), Some(&8));
+assert_eq!(iterator.next(), Some(&6));
+assert_eq!(iterator.next(), None);
+```
+
+#### 15.2.2 IntoIterator的实现
+
+> 给定一个集合的共享引用，into_iter 会返回一个迭代器，该迭代器会生成对其条目的共享引用。例如，在前面的代码中，`(&favorites).into_iter()`会返回一个 Item 类型为 `&String` 的迭代器。
+>
+> 给定对集合的可变引用，into_iter 会返回一个迭代器，该迭代器会生成对其条目的可变引用。如果 vector 是某个 `Vec<String>`，则调用` (&mut vector).into_iter()` 会返回一个 Item 类型为 `&mut String` 的迭代器。
+>
+> 当按值传递集合时，into_iter 会返回一个迭代器，该迭代器会获取集合的所有权并按值返回这些条目，这些条目的所有权会从集合转移给消费者，原始集合在此过程中已被消耗掉了。例如，前面代码中的 `favorites.into_iter()` 调用返回了一个迭代器，该迭代器会按值生成每个字符串，消费者会获得每个字符串的所有权。当迭代器被丢弃时，集合中剩余的所有元素都将被丢弃，并且该集合的空壳也将被丢弃
+
+并非每种类型都提供了这 3 种实现
+
+#### 15.2.3 from_fn 与 successors
+
+给定返回 `Option<T>` 的函数，`std::iter::from_fn`（来自 fn）就会返回一个迭代器，该迭代器会调用 fn 来生成条目：
+
+```rust
+use rand::random; // 在Cargo.toml中添加dependencies: rand = "0.7"
+use std::iter::from_fn;
+
+// 产生1000条端点均匀分布在区间[0, 1]上的随机线段的长度（这并不是
+// `rand_distr` crate中能找到的分布类型，但你可以轻易实现一个）
+let lengths: Vec<f64> =
+    from_fn(|| Some((random::<f64>() - random::<f64>()).abs()))
+        .take(1000)
+        .collect();
+```
+
+> 它会调用 from_fn 来让迭代器产生随机数。由于迭代器总是返回 Some，因此序列永不结束，但我们调用 take(1000) 时会将其限制为前 1000 个元素。然后collect 会从这 1000 次迭代中构建出向量
+
+如果每个条目都依赖于其前一个条目，那么 `std::iter::successors` 函数很实用。只需要提供一个初始条目和一个函数，且该函数能接受一个条目并返回下一个条目的 Option。如果返回 None，则迭代结束
+
+```rust
+use num::Complex;
+use std::iter::successors;
+
+fn escape_time(c: Complex<f64>, limit: usize) -> Option<usize> {
+  let zero = Complex { re: 0.0, im: 0.0 };
+  successors(Some(zero), |&z| { Some(z * z + c) })
+  	.take(limit)
+  	.enumerate()
+  	.find(|(_i, z)| z.norm_sqr() > 4.0)
+  	.map(|(i, _z)| i)
+```
+
+通过`from_fn`实现的斐波拉契数列
+
+```rust
+use std::io;
+
+fn main() {
+    println!("Input a number: ");
+    let mut num = String::new();
+    io::stdin().read_line(&mut num).expect("Read input failed");
+    let num: usize = num.trim().parse().expect("Please input a number!");
+    println!("Result: {:?}", fipolacci().take(num).collect::<Vec<_>>());
+}
+
+fn fipolacci() -> impl Iterator<Item = usize> {
+    let mut state = (0, 1);
+    std::iter::from_fn(move || {
+        state = (state.1, state.0 + state.1);
+        Some(state.0)
+    })
+}
+```
+
+#### 15.2.4 drain方法
+
+```rust
+let mut outer = "Earth".to_string();
+let inner = String::from_iter(outer.drain(1..4));
+
+assert_eq!(outer, "Eh");
+assert_eq!(inner, "art");
+```
+
+drain 会接受一个对集合的可变引用，并返回一个迭代器，该迭代器会将每个元素的所有权传给消费者
+
+#### 15.2.5 其他迭代器源
+
+|                       类型或特型                        |                            表达式                            |                           注意事项                           |
+| :-----------------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: |
+|                    `std::ops::Range`                    |                 `1..10` `(1..10).step_by(2)`                 | 两个端点必须是可迭代的整数类型。范围包括起始值，不包括结束值 生成 1、3、5、7、9 |
+|                  `std::ops::RangeFrom`                  |                            `1..`                             | 无界迭代。起点必须是一个整数。如果值达到了该类型的上限，可能会发生 panic 或溢出 |
+|               `std::ops::RangeInclusive`                |                           `1..=10`                           |                和 `Range` 类似，但包含结束值                 |
+|                       `Option<T>`                       |                      `Some(10).iter()`                       |    表现得像一个长度为 0（`None`）或 1（`Some(v)`）的向量     |
+|                     `Result<T, E>`                      |                     `Ok("blah").iter()`                      |               类似于 `Option`，但生成 `Ok` 值                |
+|                      `Vec<T>,&[T]`                      | `v.windows(16)` `v.chunks(16)` `v.chunks_mut(1024)` `v.split(|byte|byte & 1 != 0)` `v.split_mut(...)` `v.rsplit(...)` `v.splitn(n, ...)` | 从左到右生成给定长度的所有连续切片。窗口之间会有重叠 从左到右生成给定长度的不重叠的连续切片 和 `chunks` 类似，但生成的切片是可变的 生成由匹配给定谓词的元素分隔的切片 同上，但生成可变切片 与 `split` 类似，但从右到左生成切片 与 `split` 类似，但最多生成 *n*个切片 |
+|                      `String,&str`                      | `s.bytes()` `s.chars()` `s.split_whitespace()` `s.lines()` `s.split('/')` `s.matches(char::is_numeric)` | 生成一些 UTF-8 格式的字节 生成一些 UTF-8 表示的字符 按空白字符拆分字符串，并生成非空白字符的切片 生成字符串各行的切片 用给定模式拆分字符串，用匹配项之间的部分生成切片。模式可以有很多种：字符、`String` 和闭包 生成与给定模式匹配的切片 |
+| `std::collections::HashMap, std::collections::BTreeMap` |        `map.keys(), map.values()` `map.values_mut()`         |   生成对该 `map` 的键或值的共享引用 生成对条目值的可变引用   |
+| `std::collections::HashSet, std::collections::BTreeSet` |         `set1.union(set2)` `set1.intersection(set2)`         | 生成对 `set1` 和 `set2` 并集元素的共享引用 生成对 `set1` 和 `set2` 交集元素的共享引用 |
+|               `std::sync::mpsc::Receiver`               |                        `recv.iter()`                         |           生成从位于另一个线程的对端发送者发来的值           |
+|                     `std::io::Read`                     |              `stream.bytes()` `stream.chars()`               |   从 I/O 流中生成一些字节 将流解析为 UTF-8，并生成一些字符   |
+|                   `std::io::BufRead`                    |           `bufstream.lines()` `bufstream.split(0)`           | 将流解析为 UTF-8，并按行生成一些 `String` 使用给定的字节拆分流，生成该字节间的 `Vec<u8>` 缓冲区 |
+|                   `std::fs::ReadDir`                    |                  `std::fs::read_dir(path)`                   |                         生成目录条目                         |
+|                 `std::net::TcpListener`                 |                    `listener.incoming()`                     |                      生成传入的网络连接                      |
+|                        自由函数                         | `std::iter::empty()` `std::iter::once(5)` `std::iter::repeat("#9")` |    立即返回 `None` 生成给定的值然后结束 总是生成给定的值     |
+
+### 15.3 迭代器适配器
+
+一旦你手头有了迭代器，迭代器的 Iterator 特型就会提供大量**适配器方法**（也可以简称为适配器）。**适配器会消耗某个迭代器并构建一个实现了特定行为的新迭代器**
+
+#### 15.3.1 map 与 filter
+
+map 迭代器会按值将每个条目传给闭包，然后**将闭包结果的所有权转移给自己的消费者**。filter 迭代器会通过**共享引用**将每个条目传给闭包，并**保留所有权**以便再把选定的条目传给自己的消费者
+
+```rust
+let text = "  ponies  \n   giraffes\niguanas  \nsquid".to_string();
+let v: Vec<&str> = text.lines()
+    .map(str::trim)
+		// 这里需要解引用就是因为filter迭代器的条目类型是&str，闭包参数s的类型是&&str
+    .filter(|s| *s != "iguanas")
+    .collect();
+assert_eq!(v, ["ponies", "giraffes", "squid"]);
+```
+
+关于迭代器适配器的注意事项：
+
+1. 单纯在迭代器上调用适配器并不会消耗任何条目，只会返回一个新的迭代器，新迭代器会根据需要从第一个迭代器中提取条目，以生成自己的条目，在适配器的适配链中，**实际完成任何工作（同时消耗条目）的唯一方法是在最终的迭代器上调用 next**
+2. 迭代器的适配器是一种**零成本抽象**，由于 map、filter 和其他类似的适配器都是泛型的，因此将它们应用于迭代器就会专门针对所涉及的特定迭代器类型生成特化代码。这意味着 Rust 会有足够的信息**将每个迭代器的 next方法内联到它的消费者中，然后将这一组功能作为一个单元翻译成机器代码**
+
+#### 15.3.2 filter_map 与 flat_map
+
+filter_map 适配器与 map 类似，不同之处在于前者允许其闭包将条目转换为新条目（就像 map 那样）或从迭代中丢弃该条目。因此，它有点儿像 filter和 map 的组合
+
+```rust
+use std::str::FromStr;
+
+let text = "1\nfrond .25  289\n3.1415 estuary\n";
+for number in text
+    .split_whitespace()
+    .filter_map(|w| f64::from_str(w).ok())
+{
+    println!("{:4.2}", number.sqrt());
+}
+```
+
+flat_map 迭代器会生成此闭包返回的**序列串联后的结果**，传给 flat_map 的闭包必须返回一个**可迭代者**，但可以返回任意种类的可迭代者
+
+```rust
+use std::collections::HashMap;
+
+let mut major_cities = HashMap::new();
+major_cities.insert("Japan", vec!["Tokyo", "Kyoto"]);
+major_cities.insert("The United States", vec!["Portland", "Nashville"]);
+major_cities.insert("Brazil", vec!["São Paulo", "Brasília"]);
+major_cities.insert("Kenya", vec!["Nairobi", "Mombasa"]);
+major_cities.insert("The Netherlands", vec!["Amsterdam", "Utrecht"]);
+
+let countries = ["Japan", "Brazil", "Kenya"];
+
+for &city in countries.iter().flat_map(|country| &major_cities[country]) {
+    println!("{}", city);
+}
+```
+
+#### 15.3.3 flatten
+
+```rust
+use std::collections::BTreeMap;
+
+// 一个把城市映射为城市中停车场的表格：每个值都是一个向量
+let mut parks = BTreeMap::new();
+parks.insert("Portland",  vec!["Mt. Tabor Park", "Forest Park"]);
+parks.insert("Kyoto",     vec!["Tadasu-no-Mori Forest", "Maruyama Koen"]);
+parks.insert("Nashville", vec!["Percy Warner Park", "Dragon Park"]);
+
+// 构建一个表示全部停车场的向量。`values`给出了一个能生成
+// 向量的迭代器，然后`flatten`会依次生成每个向量的元素
+let all_parks: Vec<_> = parks.values().flatten().cloned().collect();
+
+assert_eq!(all_parks,
+           vec!["Tadasu-no-Mori Forest", "Maruyama Koen", "Percy Warner Park",
+                "Dragon Park", "Mt. Tabor Park", "Forest Park"]);
+```
+
+#### 15.3.4 take 与 take_while
+
+```rust
+fn take(self, n: usize) -> impl Iterator<Item=Self::Item>
+    where Self: Sized;
+
+fn take_while<P>(self, predicate: P) -> impl Iterator<Item=Self::Item>
+    where Self: Sized, P: FnMut(&Self::Item) -> bool;
+```
+
+两者都会接手某个迭代器的所有权并返回一个新的迭代器，新的迭代器会从第一个迭代器中传递条目，并可能提早终止序列。take 迭代器会在**最多生成 n 个条目后返回 None**。take_while 迭代器会针对每个条目调用 predicate，并**对predicate 返回了 false 的首个条目以及其后的每个条目都返回 None**
+
+#### 15.3.5 skip 与 skip_while
+
+与 take和 take_while 互补的方法
+
+#### 15.3.6 peekable
+
+peekable（可窥视）迭代器的功能是允许我们窥视即将生成的下一个条目，而**无须实际消耗它**
+
+peekable 迭代器有一个额外的方法 peek，该方法会返回一个`Option<&Item>`：如果底层迭代器**已耗尽**，那么返回值就为 `None`；否则为`Some(r)`，其中 r 是对**下一个条目的共享引用**
+
+```rust
+use std::iter::Peekable;
+
+fn parse_number<I>(tokens: &mut Peekable<I>) -> u32
+    where I: Iterator<Item=char>
+{
+    let mut n = 0;
+    loop {
+        match tokens.peek() {
+            Some(r) if r.is_digit(10) => {
+                n = n * 10 + r.to_digit(10).unwrap();
+            }
+            _ => return n
+        }
+        tokens.next();
+    }
+}
+
+let mut chars = "226153980,1766319049".chars().peekable();
+assert_eq!(parse_number(&mut chars), 226153980);
+// 注意，`parse_number`并没有消耗这个逗号，所以我们能看到它
+assert_eq!(chars.next(), Some(','));
+assert_eq!(parse_number(&mut chars), 1766319049);
+assert_eq!(chars.next(), None);
+```
+
+#### 15.3.7 fuse
+
+fuse（保险丝）适配器能接受任何迭代器并生成一个确保在第一次返回 None 后继续返回 None 的迭代器
+
+#### 15.3.8 可逆迭代器与 rev
+
+对于双端迭代器，可以通过rev来对其进行反转，
+
+```rust
+fn rev(self) -> impl Iterator<Item=Self>
+    where Self: Sized + DoubleEndedIterator;
+```
+
+```rust
+let meals = ["breakfast", "lunch", "dinner"];
+
+let mut iter = meals.iter().rev();
+assert_eq!(iter.next(), Some(&"dinner"));
+assert_eq!(iter.next(), Some(&"lunch"));
+assert_eq!(iter.next(), Some(&"breakfast"));
+assert_eq!(iter.next(), None);
+```
+
+#### 15.3.9 inspect
+
+inspect（探查）适配器为**调试迭代器适配器的流水线**提供了便利，但在生产代码中用得不多
+
+inspect 只是对每个条目的共享引用调用闭包，然后传递该条目。闭包不会影响条目，但可以做一些事情
+
+```rust
+let upper_case: String = "große".chars()
+    .inspect(|c| println!("before: {:?}", c))
+    .flat_map(|c| c.to_uppercase())
+    .inspect(|c| println!(" after:     {:?}", c))
+    .collect();
+assert_eq!(upper_case, "GROSSE");
+```
+
+#### 15.3.10 chain
+
+chain（链接）适配器会将一个迭代器追加到另一个迭代器之后。更准确地说，`i1.chain(i2)` 会返回一个迭代器，该迭代器从 i1 中提取条目，直到用尽，然后从 i2 中提取条目
+
+```rust
+let v: Vec<i32> = (1..4).chain([20, 30, 40]).collect();
+assert_eq!(v, [1, 2, 3, 20, 30, 40]);
+
+let v1: Vec<i32> = (1..4).chain([20, 30, 40]).rev().collect();
+assert_eq!(v1, [40, 30, 20, 3, 2, 1]);
+```
+
+#### 15.3.11 enumerate
+
+Iterator 特型的 enumerate（枚举）适配器会**将运行索引附加到序列中**，它接受某个迭代器生成的条目 `A, B, C, ...` 并返回生成的值对` (0, A), (1,B), (2, C), ...`
+
+#### 15.3.12 zip
+
+zip（拉合）适配器会将两个迭代器组合成一个迭代器，新的迭代器会生成值对，每个底层迭代器各提供一个值，就像把拉链的两侧拉合起来一样。当两个底层迭代器中的任何一个已结束时，拉合后的迭代器就结束了
+
+```rust
+let v: Vec<_> = (0..).zip("ABCD".chars()).collect();
+assert_eq!(v, vec![(0, 'A'), (1, 'B'), (2, 'C'), (3, 'D')]);
+```
+
+#### 15.3.13 by_ref
+
+迭代器的 by_ref（按引用）方法会借入迭代器的可变引用，便于将各种适配器应用于该引用。一旦消耗完适配器中的条目，就会丢弃这些适配器，借用也就结束了，然后你就能**重新获得对原始迭代器的访问权**
+
+```rust
+let message = "To: jimb\r\n\
+               From: id\r\n\
+               \r\n\
+               Oooooh, donuts!!\r\n";
+
+let mut lines = message.lines();
+
+println!("Headers:");
+for header in lines.by_ref().take_while(|l| !l.is_empty()) {
+    println!("{}" , header);
+}
+
+println!("\nBody:");
+for body in lines {
+    println!("{}" , body);
+}
+```
+
+#### 15.3.14 cloned 与 copied
+
+cloned（克隆后）适配器会接受一个生成引用的迭代器，并返回一个会生成从这些引用克隆而来的值的迭代器，就像 `iter.map(|item| item.clone())`。当然，引用目标的类型也必须实现了 Clone
+
+```rust
+let a = ['1', '2', '3', '∞'];
+
+assert_eq!(a.iter().next(),          Some(&'1'));
+assert_eq!(a.iter().cloned().next(), Some('1'));
+```
+
+copied（复制后）适配器的设计思想同样如此，但限制更严格，它要求引用目标的类型必须实现了 Copy
+
+#### 15.3.15 cycle
+
+cycle（循环）适配器会返回一个迭代器，它会无限重复底层迭代器生成的序列。底层迭代器必须实现 std::clone::Clone，以便 cycle 保存其初始状态并且在每次循环重新开始时复用它
+
+```rust
+let dirs = ["North", "East", "South", "West"];
+let mut spin = dirs.iter().cycle();
+assert_eq!(spin.next(), Some(&"North"));
+assert_eq!(spin.next(), Some(&"East"));
+assert_eq!(spin.next(), Some(&"South"));
+assert_eq!(spin.next(), Some(&"West"));
+assert_eq!(spin.next(), Some(&"North"));
+assert_eq!(spin.next(), Some(&"East"));
+```
+
+### 15.4 消耗迭代器
+
+#### 15.4.1 简单累加：count、sum和product
+
+count（计数）方法会从迭代器中提取条目，直到迭代器返回 None，并报告提取的条目数
+
+#### 15.4.2 min 与 max
+
+Iterator 上的 min（最小）方法和 max（最大）方法会分别返回迭代器生成的最小条目与最大条目。**迭代器的条目类型必须实现 `std::cmp::Ord`**，这样条目之间才能相互比较
+
+#### 15.4.3 max_by 与 min_by
+
+max_by（据……最大）方法和 min_by（据……最小）方法会分别返回迭代器生成的最大条目与最小条目，**由你提供的比较函数确定规则**
+
+#### 15.4.4 max_by_key 与 min_by_key
+
+使用 Iterator 上的 max_by_key（据键最大）方法和 min_by_key（据键最小）方法可以选择最大条目或最小条目，由针对每个条目调用的闭包确定
+
+```rust
+use std::collections::HashMap;
+
+let mut populations = HashMap::new();
+populations.insert("Portland",  583_776);
+populations.insert("Fossil",        449);
+populations.insert("Greenhorn",       2);
+populations.insert("Boring",      7_762);
+populations.insert("The Dalles", 15_340);
+
+// _name为key, pop为value，这里返回pop，相当于查找最大的pop
+assert_eq!(populations.iter().max_by_key(|&(_name, pop)| pop),
+           Some((&"Portland", &583_776)));
+assert_eq!(populations.iter().min_by_key(|&(_name, pop)| pop),
+           Some((&"Greenhorn", &2)));
+```
+
+#### 15.4.5 对条目序列进行比较
+
+比较运算符**不能**用来比较迭代器，这项工作是由像 eq 和 lt 这样的方法来完成的
+
+```rust
+let packed = "Helen of Troy";
+let spaced = "Helen   of    Troy";
+let obscure = "Helen of Sandusky"; // 好人，只是不出名
+
+assert!(packed != spaced);
+assert!(packed.split_whitespace().eq(spaced.split_whitespace()));
+
+// 此断言为真，因为' ' < 'o'
+assert!(spaced < obscure);
+
+// 此断言为真，因为'Troy' > 'Sandusky'
+assert!(spaced.split_whitespace().gt(obscure.split_whitespace()));
+```
+
+#### 15.4.6 any 与 all
+
+any（任意）方法和 all（所有）方法会将闭包应用于迭代器生成的每个条目。如果闭包对**任意**条目返回了 true 或对**所有**条目都返回了 `true`，则相应的方法返回 `true`
+
+#### 15.4.7 position、rposition 和 ExactSizeIterator
+
+position（位置）方法会针对迭代器中的每个条目调用闭包，并返回调用结果为 true 的第一个条目的索引
+
+```rust
+let text = "Xerxes";
+assert_eq!(text.chars().position(|c| c == 'e'), Some(1));
+assert_eq!(text.chars().position(|c| c == 'z'), None);
+```
+
+rposition（右起位置）方法也是一样的，只是**从右侧开始搜索**，但要求使用可逆迭代器，并且要求是是确切大小的迭代器，以便能像position一样对索引进行赋值，而确切大小迭代器则是要求实现了`std::iter::ExactSizeIterator`
+
+```rust
+trait ExactSizeIterator: Iterator {
+    fn len(&self) -> usize { ... }
+    fn is_empty(&self) -> bool { ... }
+}
+```
+
+len 方法会返回剩余的条目数，而 is_empty 方法会在迭代完成时返回 true
+
+#### 15.4.8 fold 与 rfhold
+
+fold（折叠）方法是一种非常通用的工具，用于在迭代器生成的整个条目序列上累积某种结果，给定一个**初始值**（我们称之为累加器）和一个**闭包**，fold 会**以当前累加器和迭代器中的下一个条目为参数反复调用这个闭包**
+
+```rust
+let a = [5, 6, 7, 8, 9, 10];
+
+assert_eq!(a.iter().fold(0, |n, _| n+1), 6);        // 计数
+assert_eq!(a.iter().fold(0, |n, i| n+i), 45);       // 求和
+assert_eq!(a.iter().fold(1, |n, i| n*i), 151200);   // 乘积
+
+// 最大值
+assert_eq!(a.iter().cloned().fold(i32::min_value(), std::cmp::max), 10);
+```
+
+#### 15.4.9 try_fold 与 try_rfold
+
+try_fold（尝试折叠）方法与 fold 方法基本相同，不过迭代可以提前退出，无须消耗迭代器中的所有值。传给 try_fold 的**闭包返回的值会指出它是应该立即返回，还是继续折叠迭代器的条目**
+
+```rust
+use std::error::Error;
+use std::io::prelude::*;
+use std::str::FromStr;
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let stdin = std::io::stdin();
+    let sum = stdin.lock()
+        .lines()
+        .try_fold(0, |sum, line| -> Result<u64, Box<dyn Error>> {
+            Ok(sum + u64::from_str(&line?.trim())?)
+        })?;
+    println!("{}", sum);
+    Ok(())
+}
+```
+
+#### 15.4.10 nth 与 nth_back
+
+nth（第 n 个）方法会接受索引参数 n，从迭代器中跳过 n 个条目，并返回下一个条目，如果序列提前结束了，则返回 `None`。调用 `.nth(0)` 等效于`.next()`
+
+#### 15.4.11 last
+
+last（最后一个）方法会返回迭代器生成的最后一个条目，如果为空则返回`None`，它会**从前面开始消耗所有迭代器的条目**，即便此迭代器是可逆的也会如此。如果你有一个可逆迭代器并且不想消耗它的所有条目，应该只写iter.next_back()
+
+#### 15.4.12 find、rfind 和 find_map
+
+find（查找）方法会从迭代器中提取条目，返回**第一个**由给定闭包回复 true 的条目，如果序列在找到合适的条目之前就结束了则返回 `None`
+
+find_map 和 find 很像，但其闭包不会返回`bool`，而是返回某个值的`Option`。**find_map 会返回第一个类型为 `Some` 的 `Option`**
+
+```rust
+let big_city_with_volcano_park = populations.iter()
+    .find_map(|(&city, _)| {
+        if let Some(park) = find_volcano_park(city, &parks) {
+            // find_map会返回下面的值，以便让调用者知道我们找到了哪个公园
+            return Some((city, park.name));
+        }
+
+        // 拒绝此条目，并继续搜索
+        None
+    });
+
+assert_eq!(big_city_with_volcano_park,
+           Some(("Portland", "Mt. Tabor Park")));
+```
+
+#### 15.4.13 构建集合：collect 与 FromIterator
+
+#### 15.4.14 Extend 特型
+
+如果一个类型实现了 `std::iter::Extend`（扩展）特型，那么它的 extend方法就能将一些可迭代的条目添加到集合中
+
+所有的标准集合都实现了 Extend，因此它们都有 extend 方法，String 也实现了，**但具有固定长度的数组和切片则未实现**
+
+#### 15.4.15 partition
+
+partition（分区）方法会将迭代器的条目划分到两个集合中，并使用闭包来决定每个条目归属的位置
+
+```rust
+let things = ["doorknob", "mushroom", "noodle", "giraffe", "grapefruit"];
+
+// 惊人的事实：在这个列表里生物的名字都是以奇数序的字母开头的
+let (living, nonliving): (Vec<&str>, Vec<&str>)
+    = things.iter().partition(|name| name.as_bytes()[0] & 1 != 0);
+
+assert_eq!(living,    vec!["mushroom", "giraffe", "grapefruit"]);
+assert_eq!(nonliving, vec!["doorknob", "noodle"]);
+```
+
+#### 15.4.16 for_each 与 try_for_each
+
+for_each（对每一个）方法会简单地对每个条目调用某个闭包
+
+### 15.5 实现自己的迭代器
+
+## 第16章 集合
+
+Rust的集合与其他语言的集合之间存在一些**系统性差异**：
+
+1. 移动与借用无处不在
+2. Rust没有失效型错误，也就是当程序仍持有指向集合内部数据的指针时，集合被重新调整大小或发生其他变化而导致悬空指针错误
+3. Rust没有null，因此在其他语言中使用null的地方Rust会使用Option
+
+### 16.1 概述
+
+### 16.2 `Vec<T>`
+
+向量具有 3 个字段：**长度**、**容量**和指向用于存储元素的堆分配内存的**指针**
+
+#### 16.2.1 访问元素
+
+```rust
+// 获取某个元素的引用
+let first_line = &lines[0];
+
+// 获取某个元素的副本
+let fifth_number = numbers[4];       // 要求实现了Copy特型
+let second_line = lines[1].clone();  // 要求实现了Clone特型
+
+// 获取切片的引用
+let my_ref = &buffer[4..12];
+
+// 获取切片的副本
+let my_copy = buffer[4..12].to_vec();  // 要求实现了Clone特型
+```
+
+向量的**长度和索引都是 usize 类型**。试图用 u32、u64 或 isize 作为向量索引**会导致出错**。可以根据需要使用`n as usize` 来**转换**
+
+因为按值返回 T 就意味着移动它，所以一些需要就地访问元素的方法通常会**按引用返回这些元素**，但`.to_vec()`方法是一个**例外**，它会**复制这些元素（前提是元素可以克隆）**
+
+#### 16.2.2 迭代
+
+遍历` Vec<T>` 或数组 `[T; N]` 会生成 T 类型的条目，这些元素会逐个从向量或数组中移动出来并被消耗掉
+
+遍历 `&[T; N]`、`&[T]` 或 `&Vec<T>` 类型的值（对数组、切片或向量的引用）会生成 `&T` 类型的条目，即对单个元素的引用，这些元素不会移动出来
+
+遍历 `&mut [T; N]`、`&mut [T]` 或 `&mut Vec<T>` 类型的值会生成 `&mut T` 类型的条目
+
+#### 16.2.3 扩大向量与收缩向量
+
+**数组和切片一旦创建就无法调整大小**
+
+#### 16.2.4 联结
+
+```rust
+// 串联
+assert_eq!([[1, 2], [3, 4], [5, 6]].concat(), vec![1, 2, 3, 4, 5, 6]);
+// 联结
+assert_eq!([[1, 2], [3, 4], [5, 6]].join(&0), vec![1, 2, 0, 3, 4, 0, 5, 6]);
+```
+
+#### 16.2.5 拆分
+
+这里的大部分方法在处理非 mut 切片时也很方便，因此**每个方法都有 mut 版本和非 mut 版本**
+
+![image-20240330162925511](../media/image-20240330162925511.png)
+
+#### 16.2.6 交换
+
+#### 16.2.7 填充
+
+#### 16.2.8 排序与搜索
+
+由于 f32 和 f64 具有 NaN 值，因此它们无法实现 Ord 并且不能直接用作排序和二分搜索方法的键。要获得适用于浮点数据的类似方法，请使用 ord_subsetcrate
+
+#### 16.2.9 比较切片
+
+如果类型 T 支持 `==` 运算符和` !=` 运算符（PartialEq 特型，参见 12.2 节），那么数组 `[T; N]`、切片 `[T]` 和向量 `Vec<T>` 也会支持这两个运算符
+
+如果 T 支持运算符 `<`、`<=`、`>` 和 `>=`（PartialOrd 特型，参见 12.3 节），那么T 的数组、切片和向量也会支持这些运算符。切片之间是**按字典序比较**的（从左到右逐个比较）
+
+#### 16.2.10 随机元素
+
+随机数并未内置在 Rust 标准库中，但在 rand crate 中可以找到它们
+
+#### 16.2.11 Rust中不存在失效型错误
+
+### 16.3 `VecDeque<T>`
+
+Deq = Double Ended Queue，即双端队列，用于解决Vec只支持在末端高效添加和移除元素的问题，它支持在首端和尾端进行高效的添加和移除操作
+
+VecDeque的实现是一个环形缓冲区
+
+<img src="../media/image-20240401121453684.png" alt="image-20240401121453684" style="zoom:50%;" />
+
+**因为双端队列不会将自己的元素存储在连续的内存中，所以它们无法继承切片的所有方法**，如果真有这种诉求，可以通过`deque.make_contiquous()`方法来将VecDeque重新排列到连续的内存中，并返回`&mut [T]`，但需要注意，这会带来**移动内容的开销**
+
+Vec与VecDeque可相互转换：`Vec::from(deque)`与`VecDeque::from(vec)`，前者的时间复杂度为`O(n)`后者的时间复杂度为`O(1)`
+
+```rust
+use std::collections::VecDeque;
+
+let v = VecDeque::from(vec![1, 2, 3, 4]);
+```
+
+### 16.4 `BinaryHeap<T>`
+
+BinaryHeap（二叉堆）是一种元素组织会保持松散的集合，这样**最大值便能总是冒泡到队列的首部**
+
+你可以定义一个基于优先级实现 Ord 的任务结构体，以便高优先级任务比低优先级任务大一些。然后，创建一个BinaryHeap 来保存所有待处理的任务。它的 `.pop()` 方法将始终返回最重要的条目，也就是你的程序下一步就应该处理的任务
+
+BinaryHeap虽然是可迭代的，**但会以任意顺序**而不是从大到小生成堆的元素，如果要实现从大到小，需要使用while循环
+
+### 16.5 `HashMap<K, V> 与 BTreeMap<K, V>`
+
+HashMap 会将键和值存储在哈希表中，因此它需要一个**实现了 Hash 和 Eq 的键类型 K**，即用来求哈希与判断相等性的标准库特型，**所有键、值和缓存的哈希码都存储在一个分配在堆上的表中**
+
+![image-20240401130135783](../media/image-20240401130135783.png)
+
+BTreeMap 会在树结构中按键的顺序存储条目，因此它需要一个**实现了 Ord 的键类型 K**
+
+**Rust 标准库采用了 B 树而不是平衡二叉树，因为 B 树在现代硬件上速度更快**（二叉树固然在每次搜索时比较的次数较少，但B树有更好的**局部性**，内存访问被分组在一起，而不是分散在整个堆中，使得CPU缓存未命中的情况更为罕见）
+
+![image-20240401130509374](../media/image-20240401130509374.png)
+
+**Map 允许对其存储的值进行可变访问，但不允许对键进行可变访问**。你可以随意修改这些值，但键属于 Map 本身，需要确保它们不会改变，因为条目是根据对应的键来组织的
+
+#### 16.5.1 条目
+
+#### 16.5.2 对Map进行迭代
+
+- 按值迭代（`for (k, v) in map`）以生成 `(K, V)` 对，这会消耗 Map
+- 按共享引用迭代（`for (k, v) in &map`）以生成 `(&K, &V)` 对
+- 按可变引用迭代（`for (k, v) in &mut map`）以生成 `(&K, &mut V)` 对（同样，无法对存储在 Map 中的键进行可变访问，因为这些条目是通过它们的键进行组织的）
+
+所有 **HashMap 迭代器**都会以**任意顺序**访问 Map 的条目，而 **BTreeMap 迭代器会按 key 的顺序访问它们**
+
+### 16.6 `HashSet<T>` 与 `BTreeSet<T>`
+
+事实上，Rust 的两个 Set 类型 `HashSet<T>` 和 `BTreeSet<T>`都是通过对 `HashMap<T, ()>` 和 `BTreeMap<T, ()>` 的浅层包装实现的
+
+#### 16.6.1 对Set进行迭代
+
+- 按值迭代（`for v in set`）会生成 Set 的成员并消耗掉此 Set
+- 按共享引用（`for v in &set`）迭代会生成对 Set 成员的共享引用
+
+**不支持通过可变引用迭代 Set**
+
+#### 16.6.2 当相等的值不完全相同时
+
+#### 16.6.3 针对整个Set的运算
+
+即集合类的操作
+
+1. 交集：
+
+   `set1.intersection(&set2)` 或 `&set1 & &set2` ，前者返回的是迭代器，后者会返回一个新 Set
+
+2. 并集
+
+   `set1.union(&set2)` 或 `&set1 | &set2`，同上
+
+3. 差集
+
+   `set1.difference(&set2)`或 `&set1 - &set2`，同上
+
+4. 异或（对称差集）
+
+   `set1.symmetric_difference(&set2)`或`&set1 ^ &set2`
+
+### 16.7 哈希
+
+`std::hash::Hash` 是可哈希类型的标准库特型。HashMap 的键和 HashSet 的元素都必须实现 Hash 和 Eq
+
+**引用与其引用的值具有相同的哈希码，而 Box 与其封装的值也具有相同的哈希码，向量 vec 与包含其所有数据的切片 `&vec[..]` 具有相同的哈希码。String 与具有相同字符的 &str 具有相同的哈希码**
+
+### 16.8 使用自定义哈希算法
+
+### 16.9 在标准集合之外
+
+## 第17章 字符串与文本
+
+### 17.1 一些Unicode背景知识
+
+#### 17.1.1 ASCII、Latin-1和Unicode
+
+Unicode 和 ASCII 对于从 0 到 0x7f 的所有 ASCII 码点是一一对应的
+
+#### 17.1.2 UTF-8编码
+
+UTF-8会将字符编码为 **1~4 字节**的序列
+
+![image-20240402122232106](../media/image-20240402122232106.png)
+
+格式良好的 UTF-8 序列有**两个限制**
+
+1. 只有任何给定码点的最短编码才被认为是格式良好的，你不能花费 4 字节来编码原本只需要 3 字节的码点。此规则确保了每个码点只会有唯一一个 UTF-8 编码
+2. 格式良好的 UTF-8 不得对**从 0xd800 到 0xdfff 或超过 0x10ffff 的数值进行编码**：这些数值要么保留用作非字符目的，要么完全超出了 Unicode 的范围\
+
+通过查看任何字节的高位，就能立刻判断出它是某个字符的 UTF-8 编码的起始字节还是中间字节
+
+#### 17.1.3 文本方向性
+
+Unicode 以写入或读取字符的常规顺序存储字符
+
+### 17.2 字符（char）
+
+Rust 的 char 类型是一个包含 Unicode 码点的 32 位值。**char 保证会落在 0~0xd7ff 或 0xe000~ 0x10ffff 范围内**
+
+字符串切片可以使用 `slice.chars()` 生成针对其字符的迭代器
+
+#### 17.2.1 字符分类
+
+#### 17.2.2 处理数字
+
+#### 17.2.3 字符大小写转换
+
+#### 17.2.4 与整数之间的转换
+
+Rust 的 as 运算符会将 char 转换为任何整数类型，并抹掉高位
+
+### 17.3 String 与 str
+
+文本处理方法会按**字节**偏移量索引文本并以**字节**而不是字符**为单位测量其长度**
+
+String 通过封装 `Vec<u8>` 实现，并可以**确保**向量中的内容永远是格式良好的UTF-8
+
+#### 17.3.1 创建字符串值
+
+#### 17.3.2 简单探查
+
+不能**索引具有单个位置的字符串切片**，比如 `slice[i]`。要想在给定的字节偏移处获取单个字符有点儿笨拙：必须在切片上生成一个 chars 迭代器，并要求它解析成单个字符的 UTF-8：
+
+```rust
+let parenthesized = "Rust (饂)";
+assert_eq!(parenthesized[6..].chars().next(), Some('饂'));
+```
+
+#### 17.3.3 追加文本与插入文本
+
+#### 17.3.4 移除文本与替换文本
+
+#### 17.3.5 搜索与迭代的约定
+
+Rust 用于搜索文本和迭代文本的标准库函数遵循了一些命名约定
+
+- r：大多数操作会从头到尾处理文本，但名称以 r 开头的操作会从尾到头处理。例如，rsplit 是 split 的从尾到头版本
+- n：名称以 n 结尾的迭代器会将自己限定为只取给定数量的匹配项
+- _indices：名称以 _indices 结尾的迭代器会生成通常的迭代值和在此 slice 中的字节偏移量组成的值对
+
+#### 17.3.6 搜索文本的模式
+
+搜索时使用模式来进行匹配，标准库支持以下4种模式：
+
+1. 以`char`作为模式匹配该字符
+2. 以`String`，`&str`或`&&str`作为模式匹配子串
+3. 以`FnMut(char) -> bool`闭包作为模式匹配闭包返回`true`的单个字符
+4. 以`&[char]`作为模式匹配该列表中任意单个字符
+
+```rust
+fn search_string() {
+    let haystack = "One fine day, in the middle of the night";
+
+    assert_eq!(haystack.find(','), Some(12));
+    assert_eq!(haystack.find("night"), Some(35));
+    assert_eq!(haystack.find(char::is_whitespace), Some(3));
+    assert_eq!(haystack.find(&[' ', ',']), Some(3));
+}
+```
+
+#### 17.3.7 搜索与替换
+
+注意`slice.replace(pattern, replacement)`进行的是惰性替换
+
+```rust
+assert_eq!("cabababababbage"
+           .replace("aba", "***"),
+           "c***b***babbage")
+```
+
+#### 17.3.8 遍历文本
+
+#### 17.3.9 修剪（`trim`/`trim_start`/`trim_end`等）
+
+修剪字符串就是从字符串的开头或结尾移除文本（通常是空白字符）
+
+#### 17.3.10 字符串的大小写转换
+
+#### 17.3.11 从字符串中解析出其他类型
+
+#### 17.3.12 将其他类型转换为字符串
+
+#### 17.3.13 借用其他类似文本的类型
+
+#### 17.3.14 以UTF-8格式访问文本
+
+- `slice.as_bytes()`（用作字节切片）
+- `string.into_bytes()`（转为字节切片）
+
+#### 17.3.15 从UTF-8数据生成文本
+
+#### 17.3.16 推迟分配
+
+对于下面的代码：
+
+```rust
+fn get_name() -> String {
+    std::env::var("USER").unwrap_or("whoever you are".to_string())
+}
+
+println!("Greetings, {}!", get_name());
+```
+
+因为`std::env::var("USER")`返回的是一个String，所以在`unwrap_or`时也要返回一个String类型，但此时其实我只需要一个str（静态字符串），没必要分配内存，此时可以考虑使用`std::borrow::Cow`：
+
+```rust
+use std::borrow::Cow;
+
+fn get_name() -> Cow<'static, str> {
+    std::env::var("USER")
+        .map(|v| Cow::Owned(v))
+        .unwrap_or(Cow::Borrowed("whoever you are"))
+}
+```
+
+`Cow<'a, T>` 是一个具有 Owned 和 Borrowed 两个变体的枚举。Borrowed 持有一个引用 `&'a T`，而 Owned 持有 `&T` 的拥有型版本：对于 `&str` 是 `String`，对于 `&[i32]` 是 `Vec<i32>`，等等。无论是 Owned 还是Borrowed，`Cow<'a, T>` 总能生成一个 `&T` 供你使用。事实上，`Cow<'a, T>`可以解引用为 `&T`，其行为类似于一种智能指针
+
+当你可能需要也可能不需要修改借用的某些文本时，Cow 也很有用。不需要修改时，可以继续借用。但是 Cow 名副其实的**写入时克隆**行为可以根据需要为你**提供一个拥有型的、可变的值副本**。Cow 的`to_mut` 方法会确保 Cow 是`Cow::Owned`，必要时会应用该值的 ToOwned 实现，然后返回对该值的可变引用
+
+```rust
+fn get_title() -> Option<&'static str> { ... }
+
+let mut name = get_name();
+if let Some(title) = get_title() {
+    name.to_mut().push_str(", ");
+    name.to_mut().push_str(title);
+}
+
+println!("Greetings, {}!", name);
+```
+
+#### 17.3.17 把字符串当作泛型集合
+
+### 17.4 格式化各种值
+
+Rust 格式化工具的设计是开放式的。你可以通过实现 `std::fmt` 模块的格式化特型来扩展这些宏以支持自己的类型。也可以使用 `format_args!` 宏和`std::fmt::Arguments` 类型来让自己的函数和宏支持格式化语言。
+
+格式化宏**总会借入**对其参数的**共享引用**，但**永远不会拥有或修改它们**
+
+格式化字符串示例：
+
+|           模板字符串           |             参数列表              |               结果               |
+| :----------------------------: | :-------------------------------: | :------------------------------: |
+|      `"number of {}: {}"`      |         `"elephants", 19`         |   `"number of elephants: 19"`    |
+|      `"from {1} to {0}"`       |    `"the grave", "the cradle"`    | `"from the cradle to the grave"` |
+|          `"v = {:?}"`          |       `vec![0,1,2,5,12,29]`       |   `"v = [0, 1, 2, 5, 12, 29]"`   |
+|        `"name = {:?}"`         |             `"Nemo"`              |       `"name = \"Nemo\""`        |
+|        `"{:8.2} km/s"`         |             `11.186`              |         `"  11.19 km/s"`         |
+|    `"{:20} {:02x} {:02x}"`     |       `"adc #42", 105, 42`        |     `"adc #42        69 2a"`     |
+|    `"{1:02x} {2:02x} {0}"`     |       `"adc #42", 105, 42`        |        `"69 2a adc #42"`         |
+| `"{lsb:02x} {msb:02x} {insn}"` | `insn="adc #42", lsb=105, msb=42` |        `"69 2a adc #42"`         |
+|           `"{:02?}"`           |          `[110, 11, 9]`           |        `"[110, 11, 09]"`         |
+|          `"{:02x?}"`           |          `[110, 11, 9]`           |        `"[6e, 0b, 09]"`##        |
+
+#### 17.4.1 格式化文本值
+
+|            使用的特性             |                   模板字符串                   |                       结果                       |
+| :-------------------------------: | :--------------------------------------------: | :----------------------------------------------: |
+|               默认                |                     `"{}"`                     |                   `"bookends"`                   |
+|           最小字段宽度            |               `"{:4}"` `"{:12}"`               |           `"bookends"` `"bookends  "`            |
+|           文本长度限制            |              `"{:.4}"` `"{:.12}"`              |              `"book"` `"bookends"`               |
+|        字段宽度、长度限制         | `"{:12.20}"` `"{:4.20}"` `"{:4.6}"` `"{:6.4}"` | `"bookends  "` `"bookends"` `"booken"` `"book "` |
+|           左对齐，宽度            |                   `"{:<12}"`                   |                  `"bookends  "`                  |
+|            居中，宽度             |                   `"{:^12}"`                   |                  `" bookends "`                  |
+|           右对齐，宽度            |                   `"{:>12}"`                   |                  `"  bookends"`                  |
+|     用 `'='` 填补，居中，宽度     |                  `"{:=^12}"`                   |                 `"==bookends=="`                 |
+| 用 `'*'` 填补，右对齐，宽度，限制 |                 `"{:*>12.4}"`                  |                 `"********book"`                 |
+
+由于文件名路径不一定是格式良好的 UTF-8，因此 `std::path::Path` **不完全是文本类型**，不能将 `std::path::Path` 直接传给格式化宏。不过，Path 有个display 方法会返回一个供格式化的 UTF-8 值，以适合所在平台的方式解决问题
+
+#### 17.4.2 格式数值
+
+##### 格式化整数的字符串指令
+
+|              使用的特性              |         模板字符串         |            结果             |
+| :----------------------------------: | :------------------------: | :-------------------------: |
+|                 默认                 |           `"{}"`           |          `"1234"`           |
+|              强制正负号              |          `"{:+}"`          |          `"+1234"`          |
+|             最小字段宽度             |     `"{:12}"` `"{:2}"`     |    `"    1234"` `"1234"`    |
+|             正负号，宽度             |         `"{:+12}"`         |        `"    +1234"`        |
+|             前导零，宽度             |         `"{:012}"`         |      `"000000001234"`       |
+|         正负号，前导零，宽度         |        `"{:+012}"`         |      `"+00000001234"`       |
+|             左对齐，宽度             |         `"{:<12}"`         |        `"1234    "`         |
+|              居中，宽度              |         `"{:^12}"`         |        `"  1234  "`         |
+|             右对齐，宽度             |         `"{:>12}"`         |        `"    1234"`         |
+|         左对齐，正负号，宽度         |        `"{:<+12}"`         |        `"+1234    "`        |
+|          居中，正负号，宽度          |        `"{:^+12}"`         |        `"  +1234  "`        |
+|         右对齐，正负号，宽度         |        `"{:>+12}"`         |        `"    +1234"`        |
+|      用 `'='` 填补，居中，宽度       |        `"{:=^12}"`         |      `"====1234===="`       |
+|             二进制表示法             |          `"{:b}"`          |       `"10011010010"`       |
+|          宽度，八进制表示法          |         `"{:12o}"`         |        `"    2322"`         |
+|     正负号，宽度，十六进制表示法     |        `"{:+12x}"`         |        `"    +4d2"`         |
+|  正负号，宽度，用大写数字的十六进制  |        `"{:+12X}"`         |        `"    +4D2"`         |
+| 正负号，显式基数前缀，宽度，十六进制 |        `"{:+#12x}"`        |        `"   +0x4d2"`        |
+| 正负号，基数，前导零，宽度，十六进制 | `"{:+#012x}"` `"{:+#06x}"` | `"+0x0000004d2"` `"+0x4d2"` |
+
+##### 格式化浮点数的字符串指令
+
+|         使用的特性         |        模板字符串         |              结果               |
+| :------------------------: | :-----------------------: | :-----------------------------: |
+|            默认            |          `"{}"`           |          `"1234.5678"`          |
+|            精度            |    `"{:.2}"` `"{:.6}"`    |   `"1234.57"` `"1234.567800"`   |
+|        最小字段宽度        |         `"{:12}"`         |         `"  1234.5678"`         |
+|       最小宽度，精度       |  `"{:12.2}"` `"{:12.6}"`  | `"   1234.57"` `" 1234.567800"` |
+|   前导零，最小宽度，精度   |       `"{:012.6}"`        |        `"01234.567800"`         |
+|         科学记数法         |         `"{:e}"`          |         `"1.2345678e3"`         |
+|      科学记数法，精度      |        `"{:.3e}"`         |           `"1.235e3"`           |
+| 科学记数法，最小宽度，精度 | `"{:12.3e}"` `"{:12.3E}"` |  `"   1.235e3"` `"   1.235E3"`  |
+
+#### 17.4.3 格式化其他类型
+
+#### 17.4.4 格式化值以进行调试
+
+`{:?}`与`{:#?}`，后者会格式化输出
+
+#### 17.4.5 格式化指针以进行调试
+
+- `{:p}` 表示法会将引用、Box 和其他类似指针的类型格式化为地址
+
+#### 17.4.6 按索引或名称引用参数
+
+```rust
+assert_eq!(format!("{mode} {2} {} {}", "people", "eater", "purple", mode="flying"), "flying purple people eater");
+```
+
+#### 17.4.7 动态宽度与动态精度
+
+如果想在运行期选择字段宽度，则可以这样写
+
+```rust
+format!("{:>1$}", content, get_width())
+
+// 按名称索引
+format!("{:>width$}", content, width=get_width())
+```
+
+下面的代码会把 content 裁剪成最多 get_limit() 个字符
+
+```rust
+format!("{:.*}", get_limit(), content)
+```
+
+#### 17.4.8 格式化自己的类型
+
+格式化宏会使用 `std::fmt` 模块中定义的一组特型将值转换为文本。通过自行实现这些特型中的一个或多个，就可以让 Rust 的格式化宏来格式化你的类型
+
+格式参数中的符号指示了其参数类型**必须实现的特型**
+
+```rust
+use std::fmt;
+
+impl fmt::Display for Complex {
+    fn fmt(&self, dest: &mut fmt::Formatter) -> fmt::Result {
+        let im_sign = if self.im < 0.0 { '-' } else { '+' };
+        write!(dest, "{} {} {}i", self.re, im_sign, f64::abs(self.im))
+    }
+}
+```
+
+#### 17.4.9 在自己的代码中使用格式化语言
+
+使用 Rust 的 `format_args!` 宏和 `std::fmt::Arguments` 类型，你可以编写能接受格式模板和参数的自定义函数和宏
+
+### 17.5 正则表达式
+
+#### 17.5.1 Rege的基本用法
+
+```rust
+use regex::Regex;
+
+fn main() {
+    let semver = Regex::new(r"(\d+)\.(\d+)\.(\d+)(-[-.[:alnum:]]*)?").unwrap();
+
+    let haystack = r#"regex = "0.2.5""#;
+    assert!(semver.is_match(haystack));
+
+    let captures = semver
+        .captures(haystack)
+        .ok_or("semver regex should have matched")
+        .unwrap();
+
+    assert_eq!(&captures[0], "0.2.5");
+    assert_eq!(&captures[1], "0");
+
+    let haystack_new = "In the beginning, there was 1.0.0. \
+        For a while, we used 1.0.1-beta, \
+        but in the end, we settled on 1.2.4";
+
+    let matches: Vec<&str> = semver
+        .find_iter(haystack_new)
+        .map(|match_| match_.as_str())
+        .collect();
+    assert_eq!(matches, vec!["1.0.0", "1.0.1-beta", "1.2.4"]);
+
+    println!("{}", haystack_new);
+}
+```
+
+#### 17.5.2 惰性构建正则表达值
+
+`Regex::new` 构造函数的**开销可能很高**，最好让 Regex 构造远离繁重的计算循环，这就意味着应该只构建一次 Regex，然后重复使用它
+
+**lazy_static** crate 提供了一种**在首次使用时惰性构造静态值的好办法**
+
+```toml
+[dependencies]
+lazy_static = "1"
+```
+
+```rust
+use lazy_static::lazy_static;
+
+lazy_static! {
+    static ref SEMVER: Regex
+        = Regex::new(r"(\d+)\.(\d+)\.(\d+)(-[-.[:alnum:]]*)?")
+              .expect("error parsing regex");
+}
+```
+
+该宏会扩展成名为 SEMVER 的静态变量的声明，但其类型不完全是Regex，而是一个实现了 `Deref<Target=Regex>` 的由宏生成的类型，**并公开了与 Regex 相同的全部方法**。**第一次解引用SEMVER 时，会执行初始化程序，并保存该值供以后使用**。由于SEMVER 是一个静态变量，而不仅仅是局部变量，因此每次执行程序时初始化器都**最多运行一次**
+
+```rust
+use std::io::BufRead;
+
+let stdin = std::io::stdin();
+for line_result in stdin.lock().lines() {
+    let line = line_result?;
+    if let Some(match_) = SEMVER.find(&line) {
+        println!("{}", match_.as_str());
+    }
+}
+```
+
+### 17.6 规范化
+
+Unicode 指定了字符串的规范化形式。每当根据Unicode 规则应将两个字符串视为等同时，它们的规范化形式是**逐字符全同**的。当使用 UTF-8 编码时，它们是**逐字节全同**的
+
+#### 17.6.1 规范化形式
+
+四种规范化形式：
+
+NFC、NFD会使用每个字符的**最大组合形式**和**最大分解形式**，但不会试图统一**兼容性等价序列**
+
+NFKC 规范化形式和 NFKD 规范化形式类似于 NFC 和NFD，但它们会将所有兼容性等效序列规范化为各自的一些简单表示法
+
+#### 17.6.2 unicode-normalization crate
+
+Rust 的 unicode-normalization crate 提供了一个特型，可以将方法添加到 &str 中，以便将文本转成四种规范化形式中的任何一种
+
+## 第18章 输入与输出
+
+实现了 Read 的值具有面向字节的输入方法。它们叫作**读取器**
+
+实现了 BufRead 的值是**缓冲读取器**。它们支持 Read 的所有方法，外加读取文本行等方法
+
+实现了 Write 的值能支持面向字节和 UTF-8 文本的输出。它们叫作**写入器**
+
+<img src="../media/image-20240404222802633.png" alt="image-20240404222802633" style="zoom:50%;" />
+
+### 18.1 读取器与写入器
+
+Rust标准库中的`std::io::copy()`的实现
+
+```rust
+use std::io::{self, ErrorKind, Read, Write};
+
+const DEFAULT_BUF_SIZE: usize = 8 * 1024;
+
+fn main() {
+    println!("Hello, world!");
+}
+
+// ?Sized就表示UnSized类型
+fn copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> io::Result<u64>
+where
+    R: Read,
+    W: Write,
+{
+    let mut buf = [0; DEFAULT_BUF_SIZE];
+    let mut written = 0;
+    loop {
+        let len = match reader.read(&mut buf) {
+            Ok(0) => return Ok(written),
+            Ok(len) => len,
+            Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+            Err(e) => return Err(e),
+        };
+        writer.write_all(&buf[..len])?;
+        written += len as u64;
+    }
+}
+```
+
+在Rust中，ref和&都是用于引用传递的关键字，但它们在模式匹配中有些微的区别
+
+其中，**ref用于将一个变量绑定为其值的引用，而&则直接将变量绑定为引用**。这意味着，当使用ref时，需要在变量名前加上ref关键字，而使用&则直接在变量名前加上&符号
+
+#### 18.1.1 读取器
 
