@@ -1,5 +1,11 @@
 # TypeScript学习笔记
 
+## 0. 内置类型
+
+![](../media/09cb11ccbfb54fef9129b984b2c30996~tplv-k3u1fbpfcp-jj-mark.awebp)
+
+[盘点Typescript中23个内置类型工具](https://juejin.cn/post/7341669201009655845?share_token=21e6d8ad-19d4-4f2a-b326-8751bce03448)
+
 ## 1. TypeScript 5.3 New Features
 
 ### 1.1 Import Attributes 
@@ -191,5 +197,6 @@ export let p: Person;
 
 - 跳过部分JSDoc的转译，编译耗时减少
 - 优化对交叉类型的处理
-- 
+
+
 

@@ -219,9 +219,17 @@ chsh -s /bin/zsh
 - 向后删除光标所在字符：ctrl+d
 - 删除至行尾：ctrl+k
 - 向前删除一个单词：ctrl+w
+- 向后删除一个单词：alt+d
 - 清空整行：ctrl+u
+- 粘贴：ctrl+y
+- 撤回：ctrl+shift+_
+- 交互当前光标处单词与前一个单词：ctrl+xt
+- 将当前命令移入缓存并清空当前行：ctrl+q
+- 将当前命令通过默认编辑器来进行编辑：ctrl+xe （编辑后通过wq来保存则会在命令行生效）
 - 文件递归查找：`ls **/a`
 - 文件类型别名：alias -s，比如：alias -s c=vim，表示默认使用vim打开c文件，设置之后可以直接输入`a.c`，就会使用vim打开该文件了
+
+[更多](https://itnext.io/the-zsh-shell-tricks-i-wish-id-known-earlier-ae99e91c53c2)
 
 ### 任务管理
 

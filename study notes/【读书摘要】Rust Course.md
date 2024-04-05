@@ -1,4 +1,4 @@
-# Rust Course
+# Rust语言圣经（Rust Course）
 
 ## 0. 环境准备
 

@@ -84,6 +84,11 @@ IFS=${oldIFS}
 ```
 
 ```bash
+# mov转mp4
+ffmpeg -i example.mov -vcodec libx264 -acodec aac example.mp4
+```
+
+```bash
 # 打印powerlevel10k的颜色
 for i in {0..255}; do print -Pn "%K{$i}  %k%F{$i}${(l:3::0:)i}%f " ${${(M)$((i%6)):#3}:+$'\n'}; done
 ```
@@ -174,8 +179,6 @@ done
 node app.js | awk '{print $5}' | sort | uniq -c | sort -r | head -n20 | awk '{print $2}' | fx -r 'fetch(`http://ip-api.com/json/${x}`)' '.json()' '({query,country,city})=>({ip:query,country,city})'
 ```
 
-
-
 ```bash
 # 白金会员 fx '({retcode,url})=>({retcode, url})'
 cat songs_m.json | jq -r '.[].id' | fx -r 'fetch(`http://client.diyring.cc/h5res/q_ring_audition?pi=002&an=HGG001&v=1.0.00&cn=5223&btp=1&lcc=CN&lp=%E5%AE%89%E5%BE%BD&lc3%E6%96%AF%E5%8F%B0%E9%9F%B3%E5%B8%83%E6%8B%89%E6%A0%BC&contentid=${x}&type=2&phone=18256922923&chargeid=10150005&di=b40d531e3722421d842cd08115a1d376&tc=b40d531e3722421d842cd08115a1d376`)' '.json()' | fx '.retcode'
@@ -208,6 +211,25 @@ END {
         print s ": " count[s];
     }
 }' urls.txt
+```
+
+```bash
+cat 12921_2024_03_27.csv | tail -n +2 | grep -oE 'phone=\d{11}' | awk -F= '{print $2}' | sort | uniq -c | sort -r | head -n100
+```
+
+```bash
+# 等价于curl -v "https://vring.kuyin123.com"
+openssl s_client -connect vring.kuyin123.com:443
+
+# 再输入
+GET / HTTP/1.1
+Host: vring.kuyin123.com
+
+# 敲两次回车
+```
+
+```bash
+ssh -D 1090 -g root@172.31.114.120
 ```
 
 
@@ -683,6 +705,11 @@ const toCamelCase = (str) => str.trim().replace(/[-_\s]+(.)?/g, (_, c) => (c ? c
 ```javascript
 // 检测是否开启深色模式
 const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+```
+
+```javascript
+// 获取水滴唯一标识
+fetch('https://d.xfinfr.com/anls/getUid',{credentials: 'include'}).then(resp=>resp.text()).then(resp=>console.log(resp.match(/WA_ID=(\d+)/)?.[1]))
 ```
 
 

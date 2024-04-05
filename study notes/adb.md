@@ -10,4 +10,6 @@ adb devices
 
 ```bash
 adb shell dumpsys window | grep mCurrent
+# 直接打印当前的package与activity
+adb shell dumpsys window | grep -E 'mCurrentFocus' | awk '{print $3}'
 ```
