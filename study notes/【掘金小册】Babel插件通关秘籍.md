@@ -607,11 +607,13 @@ npx browserslist "supports es6-module"
 
 #### @babel/preset-env的配置
 
+##### debug
 
+设置 debug 为 true，会打印 targets 和根据 tragets 过滤出的的 plugin 和 preset
 
-### 5. helper --> runtime
+### 从helper到runtime
 
-在使用transform-runtime之前，helper会在每个模块重复注入导致冗余，polyfill也存在污染全局环境，而transform-runtime则将其抽离出来作为模块引入，既解决了冗余，也避免了全局环境的污染
+在使用transform-runtime之前，helper会在每个模块重复注入helper导致冗余，polyfill也存在污染全局环境，而transform-runtime则将其抽离出来作为模块引入，既解决了冗余，也避免了全局环境的污染
 
 这个逻辑是在 @babel/plugin-transform-runtime 包里实现的。它可以把直接注入全局的方式改成模块化引入。
 
@@ -633,55 +635,109 @@ npx browserslist "supports es6-module"
 }
 ```
 
-
-
 但仍有一些问题没有解决：
 
 当使用了@babel/transform-runtime的plugin之后，对于一些环境支持的polyfill，还是引入了，因为 babel 中插件的应用顺序是：先 plugin 再 preset，plugin 从左到右，preset 从右到左，这样 plugin-transform-runtime 是在 preset-env 前面的。等 @babel/plugin-transform-runtime 转完了之后，再交给 preset-env 这时候已经做了无用的转换了。而 @babel/plugin-transform-runtime 并不支持 targets 的配置，就会做一些多余的转换和 polyfill。
 
-这个问题在babel8中得到了解决
+**这个问题在babel8中得到了解决：** babel8 不再需要 transform-runtime 插件了
 
-## 实战案例中用到的API
+## 第14章 Babel配置的原理
 
-1. babel 提供了 scope 的 api 可以用于查找作用域中的类型声明（binding），并且还可以通过 path.**getTypeAnnotation** 获得声明时的类型。
+### 功能测试
 
-   ```javascript
-   AssignmentExpression(path, state) {
-       const leftBinding = path.scope.getBinding(path.get('left'));
-       const leftType = leftBinding.path.get('id').getTypeAnnotation();// 左边的值声明的类型
-   }
-   ```
+```json
+{
+    presets: [
+        ['@babel/preset-env', {
+            targets: 'chrome 30',
+            debug: true,
+            useBuiltIns: 'usage',
+            corejs: 3
+        }]
+    ]
+}
+```
 
-1. babel 插件中可以拿到 file 对象，有 **set** 和 get 方法用来存取一些全局的信息。可以在插件调用前后，也就是 pre 和 post 阶段拿到 file 对象。
+通过这种配置可以详细地看到`@babel/preset-env`做了哪些事，比如使用了哪些插件
 
-1. 遍历所有会生成作用域的节点，比如FunctionDeclaration、BlockStatement等，这些节点有一个别名：**Scopable**（所有的别名可以在[这里](https://link.juejin.cn/?target=https%3A%2F%2Fgithub.com%2Fbabel%2Fbabel%2Fblob%2Fmain%2Fpackages%2Fbabel-types%2Fsrc%2Fast-types%2Fgenerated%2Findex.ts%23L2489-L2535)查看）
+**babel runtime 包含的代码就 core-js、helper、regenerator 这三种**
 
-1. 修改变量名并同步修改所有引用该声明的地方，使用**path.scope.rename**
+但目前的处理方式是`@babel/preset-env` 的处理方式是 **helper 代码直接注入、regenerator、core-js 代码全局引入**，这样就会导致多个模块重复注入同样的代码，会污染全局环境。**解决这个问题**就要使用`@babel/plugin-transform-runtime` 插件了
 
-1. 判断AST节点是否是纯的，没有副作用的，从而可以放心删除：**path.scope.isPure**（但是函数调用他是分析不了的，可以采用 terser 的方案，通过注释来标注纯函数。）
+```json
+{
+    presets: [
+        ['@babel/preset-env', {
+            targets: 'chrome 30',
+            debug: true,
+            useBuiltIns: 'usage',
+            corejs: 3
+        }]
+    ],
+    plugins: [
+        ['@babel/plugin-transform-runtime', {
+            corejs: 3
+        }]
+    ]
+}
+```
 
-## v8的编译流水线
+ `@babel/plugin-transform-runtime` 的功能，把注入的代码和 core-js 全局引入的代码转换成从` @babel/runtime-corejs3` 中引入的形式，`@babel/runtime-corejs3` 就包含了 helpers、core-js、regenerator 这 3 部分
 
-v8 包括 4 部分，parser、ignation 解释器，JIT 编译器，还有 garbage collector（垃圾回收器）。
+### 实现原理
 
-- parser 负责把源码 parse 成 AST。
-- ignation 解释器负责把 AST 转成字节码，然后解释执行
-- turbofan 可以把代码编译成机器码，直接执行
-- gc 负责堆内存的垃圾回收
+`preset-env` 的原理就是根据` targets` 的配置查询内部的 `@babe/compat-data` 的数据库，过滤出目标环境不支持的语法和 api，引入对应的转换插件
 
-![image.png](../media/a87438b18ad24893be5cd16ecc87d49d~tplv-k3u1fbpfcp-zoom-in-crop-mark.awebp)
+`targets` 使用 `browserslist`来解析成具体的浏览器和版本，然后根据 `@babel/compact-data` 的数据来过滤出这些浏览器支持的语法和 `api`，然后去掉这些已经支持的语法和 `api` 对应的插件，**剩下的就是需要用的转换插件**
 
+`@babel/plugin-transform-runtime`则是因为在babel中，插件先于preset执行，该插件提前做了api的转换，等到了`@babel/preset-env`执行时，发现已经没有什么可转了
 
+### 现有方案的问题
 
-## babel 的编译流程
+`@babel/plugin-transform-runtime` 提前把 polyfill 转换了，但是这个插件里没有` targets` 的设置呀，不是按需转换的，那就会多做一些没必要的转换，这个是babel8中已得到解决
 
-我们知道，babel 的主要编译流程是 parse、transform、generate。
+## 第15章 工具介绍：VSCode Debugger的使用
+
+当启动node.js的调试模式时，需加上`--inspect`或`--inspect-brk`这样的参数， 之后会启动一个`websocket server`，等待客户端链接，调试分为客户端与服务端
+
+![image-20240912084022125](../media/image-20240912084022125.png)
+
+在vscode中node.js的调度有两种模式：
+
+- launch： 把 nodejs 代码跑起来，启动 debugger server，然后用 client 来连接
+- attach：已经有了 debugger server，只需要启动一个 debugger client 连接上就行
+
+## 第16章 实战案例：自动埋点
+
+代码在[git仓库](https://github.com/QuarkGluonPlasma/babel-plugin-exercize)中的`exercize-auto-track`
+
+## 第17章 实战案例：自动国际化
+
+## 第18章 实战案例：自动生成 API 文档
+
+## 第19章 实战案例：Linter
+
+## 第20章 实战案例：类型检查
+
+## 第21章 实战案例：压缩混淆
+
+## 第22章 实战案例：JS解释器
+
+## 第23章  实战案例：模块遍历
+
+## 第24章 Babel Macros
+
+## 第25章 如何调试Babel源码
+
+## 第26章 手写Babel：思路篇
+
+### 整体思路
+
+#### babel的编译流程
 
 - parse 是把源码转成 AST
 - transform 是对 AST 做增删改
 - generate 是打印 AST 成目标代码并生成 sourcemap
-
-![img](../media/63717d7589cf415680373ede5f4f7089~tplv-k3u1fbpfcp-zoom-in-crop-mark.awebp)
 
 babel 7 把这些功能的实现放到了不同的包里面：
 
@@ -705,19 +761,22 @@ babel 7 把这些功能的实现放到了不同的包里面：
 
 当然，除了编译期转换的时候会有公共函数以外，运行时也有，这部分是放在：
 
-- ```
-  @babel/runtime
-  ```
-
-   
-
-  主要是包含 corejs、helpers、regenerator 这 3 部分：
-
-  - helper： helper 函数的运行时版本（不是通过 AST 注入了，而是运行时引入代码）
+- `@babel/runtime`主要是包含 corejs、helpers、regenerator 这 3 部分：
+- helper： helper 函数的运行时版本（不是通过 AST 注入了，而是运行时引入代码）
   - corejs： es next 的 api 的实现，corejs 2 只支持静态方法，corejs 3 还支持实例方法
-  - regenerator：async await 的实现，由 facebook 维护
+- regenerator：async await 的实现，由 facebook 维护
 
 （babel 做语法转换是自己实现的 helper，但是做 polyfill 都不是自己实现的，而是借助了第三方的 [corejs](https://link.juejin.cn/?target=https%3A%2F%2Fgithub.com%2Fzloirock%2Fcore-js)、[regenerator](https://link.juejin.cn/?target=https%3A%2F%2Fgithub.com%2Ffacebook%2Fregenerator)）
 
 - `@babel/cli` babel 的命令行工具，支持通过 glob 字符串来编译多个文件
+
+## 第27章 手写Babel：parser篇
+
+## 第28章 手写Babel：traverse篇
+
+## 第29章 手写Babel：traverse -- path篇
+
+## 第30章 手写Babel：traverse -- scope篇
+
+
 

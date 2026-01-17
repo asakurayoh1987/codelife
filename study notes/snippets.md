@@ -17,7 +17,7 @@ done
 ```
 
 ```bash
-# ffmpeg获取音频时长
+©# ffmpeg获取音频时长
 ffmpeg -i 曾经的你.mp3 2>&1 | grep -Eo 'Duration: [^\s,]+' | cut -d ' ' -f2
 ```
 
